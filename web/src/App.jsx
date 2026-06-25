@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Treemap from './components/Treemap.jsx'
 import CompareView from './components/CompareView.jsx'
+import ScreenerView from './components/ScreenerView.jsx'
 import {
   VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor,
   fmtMoneyKeur, fmtCount, fmtPct, fmtRatio,
@@ -116,10 +117,13 @@ export default function App() {
         <div className="modes">
           <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Esplora paese</button>
           <button className={'mode' + (mode === 'compare' ? ' on' : '')} onClick={() => setMode('compare')}>Confronta paesi</button>
+          <button className={'mode' + (mode === 'screener' ? ' on' : '')} onClick={() => setMode('screener')}>Screener</button>
         </div>
       </header>
 
-      {mode === 'compare' ? <CompareView /> : (<>
+      {mode === 'compare' ? <CompareView />
+       : mode === 'screener' ? <ScreenerView data={data} country={country} countries={countries} />
+       : (<>
       <div className="subhead">
         <select className="country-sel" value={country} onChange={(e) => setCountry(e.target.value)}>
           {countries.map((c) => (<option key={c.code} value={c.code}>{c.name}</option>))}
