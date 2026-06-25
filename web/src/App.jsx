@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Treemap from './components/Treemap.jsx'
+import CompareView from './components/CompareView.jsx'
 import {
   VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor,
   fmtMoneyKeur, fmtCount, fmtPct, fmtRatio,
@@ -45,6 +46,7 @@ export default function App() {
   const [sizeKey, setSizeKey] = useState('fatturato')
   const [preset, setPreset] = useState('fatturato')
   const [sort, setSort] = useState({ key: 'fatturato', dir: 'desc' })
+  const [mode, setMode] = useState('explore')
 
   // indice paesi
   useEffect(() => {
@@ -111,13 +113,19 @@ export default function App() {
     <div className="app">
       <header className="hero">
         <h1>Sfera</h1>
+        <div className="modes">
+          <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Esplora paese</button>
+          <button className={'mode' + (mode === 'compare' ? ' on' : '')} onClick={() => setMode('compare')}>Confronta paesi</button>
+        </div>
+      </header>
+
+      {mode === 'compare' ? <CompareView /> : (<>
+      <div className="subhead">
         <select className="country-sel" value={country} onChange={(e) => setCountry(e.target.value)}>
-          {countries.map((c) => (
-            <option key={c.code} value={c.code}>{c.name}</option>
-          ))}
+          {countries.map((c) => (<option key={c.code} value={c.code}>{c.name}</option>))}
         </select>
         <span className="year">dati {srcShort} · {m.latest_year} · {granLabel}</span>
-      </header>
+      </div>
       <p className="tag">L'economia di <b>{m.country_name}</b>, settore per settore. Area = dimensione · colore = crescita (CAGR).</p>
 
       <nav className="crumbs">
@@ -180,6 +188,7 @@ export default function App() {
           })}
         </tbody>
       </table>
+      </>)}
 
       <footer className="foot">
         <span>{m.source}</span>

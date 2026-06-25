@@ -154,6 +154,26 @@ def build():
                 geo_nace[geo].add(nace)
 
     index_entries = []
+    compare = {}
+
+    def add_to_compare(geo, secs):
+        for s in secs:
+            if s["level"] == "class":
+                continue  # livello comune cross-country = fino a 3 cifre
+            e = compare.setdefault(s["code"], {"code": s["code"], "name": s["name"], "level": s["level"], "by": {}})
+            if not e["name"] and s["name"]:
+                e["name"] = s["name"]
+            e["by"][geo] = {
+                "fatturato_keur": s["raw"]["fatturato_keur"],
+                "va_keur": s["raw"]["valore_aggiunto_keur"],
+                "produttivita": s["fields"]["produttivita"]["value"],
+                "redditivita": s["fields"]["redditivita"]["value"],
+                "struttura": s["fields"]["struttura"]["value"],
+                "crescita": s["fields"]["crescita"]["value"],
+                "occupati": s["raw"]["occupati"],
+                "imprese": s["raw"]["imprese"],
+            }
+
     for geo in sorted(geo_nace):
         if geo == "IT":
             continue  # Italia = ISTAT 4 cifre (build.py)
@@ -225,15 +245,18 @@ def build():
             "code": geo, "name": COUNTRY_NAMES.get(geo, geo),
             "latest_year": latest_year, "max_level": "group", "n_sectors": len(sectors),
         })
+        add_to_compare(geo, sectors)
 
     # Italia dall'indice ISTAT (countries/IT.json già scritto da build.py)
     it_path = ROOT / "data" / "processed" / "countries" / "IT.json"
     if it_path.exists():
-        itm = json.loads(it_path.read_text())["meta"]
+        it_doc = json.loads(it_path.read_text())
+        itm = it_doc["meta"]
         index_entries.insert(0, {
             "code": "IT", "name": "Italia", "latest_year": itm.get("latest_year"),
             "max_level": "class", "n_sectors": itm.get("n_classes_4d", itm.get("n_sectors")),
         })
+        add_to_compare("IT", it_doc["sectors"])  # Italia al livello comune 3 cifre
 
     # ordina: Italia prima, poi UE27, poi alfabetico per nome
     def sort_key(e):
@@ -244,6 +267,16 @@ def build():
     iblob = json.dumps(index, ensure_ascii=False, separators=(",", ":"))
     (ROOT / "data" / "processed" / "index.json").write_text(iblob)
     (ROOT / "web" / "public" / "index.json").write_text(iblob)
+
+    # compare.json: ogni settore (sezione/divisione/gruppo) con le metriche per paese
+    compare_doc = {
+        "sectors": sorted(compare.values(), key=lambda e: ({"section": 0, "div": 1, "group": 2}.get(e["level"], 3), e["code"])),
+        "countries": {e["code"]: e["name"] for e in index_entries},
+    }
+    cblob = json.dumps(compare_doc, ensure_ascii=False, separators=(",", ":"))
+    (ROOT / "data" / "processed" / "compare.json").write_text(cblob)
+    (ROOT / "web" / "public" / "compare.json").write_text(cblob)
+    print(f"compare.json: {len(compare_doc['sectors'])} settori cross-country")
 
     print(f"Paesi generati (oltre IT): {len(index_entries) - 1}")
     big = sorted(index_entries, key=lambda e: -(e['n_sectors'] or 0))[:6]
