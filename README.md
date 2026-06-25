@@ -8,6 +8,9 @@ paesi** ("dove è più grande il mercato del settore X?").
 
 🔗 **Live:** https://mattialicciardi.github.io/sfera/
 
+**Tre modalità:** *Esplora paese* (treemap + tabella), *Confronta paesi* (un settore su tutta Europa),
+*Screener* (filtri → i settori che convengono: margine, concentrazione, trend di crescita, barriera d'ingresso).
+
 Spesa dati: **zero** · Stack cloud: **zero** · LLM nel calcolo: **zero**. Tutto deterministico e ricostruibile da zero.
 
 ## Dati
@@ -37,7 +40,9 @@ Treemap: **area = dimensione** (commutabile), **colore = crescita (CAGR)**, dive
 ```bash
 # --- Italia (ISTAT, 4 cifre) ---
 python3 pipeline/fetch_istat.py     # ingest SBS; SERIALE, rate limit 5/min → NON parallelizzare
+python3 pipeline/fetch_sizeclass.py # distribuzione per classe di addetti (ISTAT+Eurostat) per la concentrazione
 python3 pipeline/build.py           # -> data/processed/countries/IT.json + web/public/countries/IT.json
+.venv/bin/pytest tests/             # test delle metriche (margine, trend, concentrazione, barriera)
 
 # --- Resto d'Europa (Eurostat, 3 cifre) ---
 python3 pipeline/fetch_eurostat.py  # 5 indicatori, tutti i paesi
