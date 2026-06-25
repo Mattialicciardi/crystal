@@ -1,5 +1,6 @@
 node_modules/
 data/raw/
+data/processed/
 *.pyc
 __pycache__/
 .DS_Store

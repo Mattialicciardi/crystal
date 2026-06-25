@@ -19,6 +19,8 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .hero { display: flex; align-items: baseline; gap: 12px; }
 .hero h1 { margin: 0; font-size: 30px; letter-spacing: -0.5px; }
 .hero h1::after { content: "·"; color: var(--teal); margin-left: 6px; }
+.country-sel { background: var(--panel); color: var(--txt); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.country-sel:hover { border-color: #36425a; }
 .year { color: var(--mut); font-size: 13px; font-variant-numeric: tabular-nums; }
 .tag { margin: 4px 0 0; color: var(--mut); font-size: 14px; line-height: 1.45; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 .northstar { text-align: right; background: linear-gradient(180deg, #15203a, #111827); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-width: 230px; }

@@ -5,7 +5,8 @@ import {
   fmtMoneyKeur, fmtCount, fmtPct, fmtRatio,
 } from './lib.js'
 
-// Colonne tabella — solo metriche economiche reali e popolate.
+const BASE = import.meta.env.BASE_URL
+
 const COLS = [
   { key: 'name',         label: 'Settore',        kind: 'name' },
   { key: 'fatturato',    label: 'Fatturato',      kind: 'money', get: (s) => s.raw.fatturato_keur },
@@ -18,7 +19,6 @@ const COLS = [
   { key: 'imprese',      label: 'Imprese',        kind: 'count', get: (s) => s.raw.imprese },
 ]
 
-// Viste-lente (L3): preset di metrica-area + ordinamento.
 const PRESETS = [
   { id: 'fatturato',      label: 'Dimensione',     size: 'fatturato',       sort: 'fatturato',    dir: 'desc' },
   { id: 'produttivita',   label: 'Produttività',   size: 'valore_aggiunto', sort: 'produttivita', dir: 'desc' },
@@ -37,6 +37,8 @@ function fmtCell(kind, v) {
 }
 
 export default function App() {
+  const [countries, setCountries] = useState(null)
+  const [country, setCountry] = useState(null)
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [path, setPath] = useState([])
@@ -44,12 +46,23 @@ export default function App() {
   const [preset, setPreset] = useState('fatturato')
   const [sort, setSort] = useState({ key: 'fatturato', dir: 'desc' })
 
+  // indice paesi
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}sectors.json`)
+    fetch(`${BASE}index.json`)
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
+      .then((idx) => { setCountries(idx.countries); setCountry(idx.default || idx.countries[0]?.code) })
+      .catch((e) => setErr(String(e)))
+  }, [])
+
+  // dataset del paese selezionato
+  useEffect(() => {
+    if (!country) return
+    setData(null); setPath([])
+    fetch(`${BASE}countries/${country}.json`)
       .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
       .then(setData)
       .catch((e) => setErr(String(e)))
-  }, [])
+  }, [country])
 
   const { index, childrenOf } = useMemo(() => {
     const index = new Map(), childrenOf = new Map()
@@ -64,8 +77,8 @@ export default function App() {
     return { index, childrenOf }
   }, [data])
 
-  if (err) return <div className="screen err">Errore nel caricamento di sectors.json: {err}</div>
-  if (!data) return <div className="screen">Carico l'economia…</div>
+  if (err) return <div className="screen err">Errore nel caricamento dati: {err}</div>
+  if (!countries || !data) return <div className="screen">Carico l'economia…</div>
 
   const currentCode = path.length ? path[path.length - 1] : null
   const items = (childrenOf.get(currentCode ?? '__root__') || []).slice()
@@ -80,6 +93,8 @@ export default function App() {
 
   const view = VIEWS[sizeKey]
   const m = data.meta
+  const srcShort = (m.source || '').includes('ISTAT') ? 'ISTAT' : 'Eurostat'
+  const granLabel = m.max_level === 'class' ? '4 cifre ATECO' : '3 cifre NACE'
 
   const applyPreset = (p) => { setPreset(p.id); setSizeKey(p.size); setSort({ key: p.sort, dir: p.dir }) }
   const drill = (code) => setPath([...path, code])
@@ -96,9 +111,14 @@ export default function App() {
     <div className="app">
       <header className="hero">
         <h1>Sfera</h1>
-        <span className="year">dati ISTAT SBS · {m.latest_year}</span>
+        <select className="country-sel" value={country} onChange={(e) => setCountry(e.target.value)}>
+          {countries.map((c) => (
+            <option key={c.code} value={c.code}>{c.name}</option>
+          ))}
+        </select>
+        <span className="year">dati {srcShort} · {m.latest_year} · {granLabel}</span>
       </header>
-      <p className="tag">L'economia italiana a 4 cifre ATECO. Area = dimensione · colore = crescita (CAGR).</p>
+      <p className="tag">L'economia di <b>{m.country_name}</b>, settore per settore. Area = dimensione · colore = crescita (CAGR).</p>
 
       <nav className="crumbs">
         {crumbs.map((c, k) => (
@@ -125,7 +145,7 @@ export default function App() {
         </div>
       </div>
 
-      <Treemap items={items} sizeKey={view.sizeKey} viewKind={view.kind} onDrill={drill} />
+      <Treemap items={items} sizeKey={view.sizeKey} viewKind={view.kind} onDrill={drill} hasChildren={(code) => (childrenOf.get(code) || []).length > 0} />
 
       <div className="legend">
         <span>Area = <b>{view.label}</b></span>
@@ -133,7 +153,7 @@ export default function App() {
           <i style={{ background: growthColor(-0.08) }} /><i style={{ background: growthColor(0) }} /><i style={{ background: growthColor(0.08) }} />
           Colore = crescita CAGR (rosso −8% → verde +8%)
         </span>
-        <span className="hint">clic su un riquadro o riga per scendere di livello · clic intestazione per ordinare</span>
+        <span className="hint">clic su un riquadro o riga per scendere · clic intestazione per ordinare</span>
       </div>
 
       <table className="grid">
@@ -148,7 +168,7 @@ export default function App() {
         </thead>
         <tbody>
           {items.map((s) => {
-            const drillable = s.level !== 'class'
+            const drillable = s.level !== 'class' && (childrenOf.get(s.code) || []).length > 0
             return (
               <tr key={s.code} data-code={s.code} className={drillable ? 'drillable' : ''} onClick={() => drillable && drill(s.code)}>
                 <td className="l"><span className="code">{s.code}</span> {s.name}</td>
@@ -163,7 +183,7 @@ export default function App() {
 
       <footer className="foot">
         <span>{m.source}</span>
-        <span>Valori monetari in € · CAGR sull'orizzonte disponibile · «—» = dato oscurato dal segreto statistico ISTAT.</span>
+        <span>Valori monetari in € · CAGR sull'orizzonte disponibile · «—» = dato non disponibile (segreto statistico o non pubblicato). Italia a 4 cifre (ISTAT); resto d'Europa a 3 cifre (Eurostat).</span>
       </footer>
     </div>
   )

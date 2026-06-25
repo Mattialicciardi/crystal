@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
-OUT = ROOT / "data" / "processed" / "sectors.json"
+OUT = ROOT / "data" / "processed" / "countries" / "IT.json"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------- pesi PRD
@@ -341,6 +341,9 @@ def build():
 
     payload = {
         "meta": {
+            "country": "IT",
+            "country_name": "Italia",
+            "max_level": "class",
             "source": "ISTAT SBS — Risultati economici delle imprese (Ateco 4 cifre), dataflow 161_267",
             "latest_year": latest_year,
             "weights": WEIGHTS,
@@ -356,7 +359,7 @@ def build():
     blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     OUT.write_text(blob)
     # copia servita dal sito statico
-    web = ROOT / "web" / "public" / "sectors.json"
+    web = ROOT / "web" / "public" / "countries" / "IT.json"
     web.parent.mkdir(parents=True, exist_ok=True)
     web.write_text(blob)
 

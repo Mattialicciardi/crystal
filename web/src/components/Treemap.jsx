@@ -5,7 +5,7 @@ import { growthColor, sizeValue, fmtMoneyKeur, fmtCount, fmtPct } from '../lib.j
 const trunc = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
 
 // items: array di settori-figli del nodo corrente. Area = sizeKey. Colore = crescita (CAGR).
-export default function Treemap({ items, sizeKey, viewKind, onDrill, W = 1000, H = 460 }) {
+export default function Treemap({ items, sizeKey, viewKind, onDrill, hasChildren, W = 1000, H = 460 }) {
   const leaves = useMemo(() => {
     const root = hierarchy({ children: items })
       .sum((d) => (d.children ? 0 : sizeValue(d, sizeKey)))
@@ -24,7 +24,7 @@ export default function Treemap({ items, sizeKey, viewKind, onDrill, W = 1000, H
         const s = l.data
         const w = l.x1 - l.x0
         const h = l.y1 - l.y0
-        const drillable = s.level !== 'class'
+        const drillable = hasChildren ? hasChildren(s.code) : s.level !== 'class'
         const cagr = s.fields?.crescita?.value
         const fill = growthColor(cagr)
         return (
