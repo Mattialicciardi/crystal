@@ -90,8 +90,17 @@ Generati da un nuovo step di build che arricchisce gli artefatti esistenti (idem
 ## 5. UI / onestà
 
 - Pannello filtri con range per ognuno degli 8 segnali (barriera disattivata in modalità Europa).
-- Colonne risultati con etichette di stato (🟢/🟡) e tooltip che spiegano i limiti (concentrazione ≠ HHI; barriera solo IT).
+- Colonne risultati con etichette di stato (🟢/🟡).
 - Trend mostrato come label + n anni (es. "sostenuto · 4 anni"), niente numeri-previsione.
+
+### Spiegazione dei campi (info contestuale + legenda) — app-wide
+
+Richiesta esplicita: ogni campo/filtro "particolare" deve poter spiegare sé stesso.
+
+- **Registro centrale delle definizioni** (`web/src/metrics.js`): per ogni metrica `{ label, definizione breve, formula, limite/onestà }`. Unica fonte di verità, riusata in Esplora, Confronta e Screener (stesse spiegazioni ovunque).
+- **Icona "i" cliccabile** (componente `InfoDot` riutilizzabile) accanto alle intestazioni di colonna e ai filtri particolari (margine, concentrazione, trend, barriera, VA/addetto, addetti/impresa) → popover con definizione + formula + **caveat di onestà** (es. "concentrazione = quota fatturato delle imprese ≥250 add., NON 'una sola azienda fa metà'").
+- **Sezione espandibile "Legenda / Metodo"** in fondo allo Screener (e a Esplora) che elenca tutte le metriche con definizione e limiti in un unico posto.
+- Il popover chiude su clic fuori / Esc; accessibile da tastiera.
 
 ## Fuori scope (esplicito)
 
