@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { hierarchy, treemap } from 'd3-hierarchy'
-import { confidenceColor, sizeValue, fmtMoneyKeur, fmtCount } from '../lib.js'
+import { growthColor, sizeValue, fmtMoneyKeur, fmtCount, fmtPct } from '../lib.js'
 
 const trunc = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
 
-// items: array di settori-figli del nodo corrente. Area = sizeKey. Colore = score (confidence|coverage).
-export default function Treemap({ items, sizeKey, viewKind, colorMetric, onDrill, W = 1000, H = 460 }) {
+// items: array di settori-figli del nodo corrente. Area = sizeKey. Colore = crescita (CAGR).
+export default function Treemap({ items, sizeKey, viewKind, onDrill, W = 1000, H = 460 }) {
   const leaves = useMemo(() => {
     const root = hierarchy({ children: items })
       .sum((d) => (d.children ? 0 : sizeValue(d, sizeKey)))
@@ -25,7 +25,8 @@ export default function Treemap({ items, sizeKey, viewKind, colorMetric, onDrill
         const w = l.x1 - l.x0
         const h = l.y1 - l.y0
         const drillable = s.level !== 'class'
-        const fill = confidenceColor(colorMetric === 'coverage' ? s.coverage : s.confidence)
+        const cagr = s.fields?.crescita?.value
+        const fill = growthColor(cagr)
         return (
           <g
             key={s.code}
@@ -34,14 +35,14 @@ export default function Treemap({ items, sizeKey, viewKind, colorMetric, onDrill
             className={'cell' + (drillable ? ' drillable' : '')}
             onClick={() => drillable && onDrill(s.code)}
           >
-            <title>{`${s.code} · ${s.name}\nCoverage ${s.coverage} · Confidence ${s.confidence}`}</title>
+            <title>{`${s.code} · ${s.name}\nCAGR fatturato: ${fmtPct(cagr)}`}</title>
             <rect width={w} height={h} fill={fill} rx="2" />
             {w > 50 && h > 24 && <text x="6" y="16" className="cell-code">{s.code}</text>}
             {w > 96 && h > 40 && <text x="6" y="31" className="cell-name">{trunc(s.name, Math.floor(w / 6.4))}</text>}
             {w > 78 && h > 56 && (
               <text x="6" y={h - 7} className="cell-val">
                 {viewKind === 'money' ? fmtMoneyKeur(s.raw[sizeKey]) : fmtCount(s.raw[sizeKey])}
-                {colorMetric === 'coverage' ? ` · cov ${Math.round(s.coverage)}` : ` · C${Math.round(s.confidence)}`}
+                {cagr != null ? ` · ${fmtPct(cagr)}` : ''}
               </text>
             )}
           </g>

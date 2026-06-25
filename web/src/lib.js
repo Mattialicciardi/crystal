@@ -27,6 +27,14 @@ function mix(a, b, t) {
 
 export const STATE_COLOR = { osservato: '#2dd4bf', stimato: '#eab308', assente: '#5b6472' }
 
+// Colore = crescita (CAGR). Diverging: rosso (in calo) → slate (fermo) → verde (in crescita).
+// Dominio ±8% mappato sull'intera scala; valori mancanti = grigio neutro.
+export function growthColor(rate) {
+  if (rate == null || Number.isNaN(rate)) return '#39414f'
+  const c = Math.max(-1, Math.min(1, rate / 0.08))
+  return c >= 0 ? mix('#48566b', '#22c55e', c) : mix('#48566b', '#ef4444', -c)
+}
+
 const moneyFmt = new Intl.NumberFormat('it-IT', { notation: 'compact', style: 'currency', currency: 'EUR', maximumFractionDigits: 1 })
 const countFmt = new Intl.NumberFormat('it-IT', { notation: 'compact', maximumFractionDigits: 1 })
 const pctFmt   = new Intl.NumberFormat('it-IT', { style: 'percent', maximumFractionDigits: 1 })
