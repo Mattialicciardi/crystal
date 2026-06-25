@@ -28,7 +28,7 @@ controllati nel browser; opzionale un test JS).
 2. **Modo mercato** (leva n°1):
    - `Competi nel settore` — il prodotto È nel settore (TAM = fatturato del settore).
    - `Vendi al settore` — il settore è il **cliente** (TAM = la sua *spesa* per il tuo tipo di prodotto = dimensione settore × ratio di spesa).
-3. **Settori** (multi-select, dalla ricerca esistente): uno o più, a 4 cifre IT / 3 cifre EU.
+3. **Settori** — **suggeriti automaticamente dal PRD** (matcher deterministico: parole chiave + sinonimi + pesatura IDF sui nomi ATECO; nessun LLM/chiave). Le proposte sono chip cliccabili che popolano la selezione; la ricerca manuale resta come override. Uno o più settori, a 4 cifre IT / 3 cifre EU.
 4. **Geografia**: paese (default Italia) o "tutta Europa".
 5. **Assunzioni** (ognuna con tre valori *low / base / high*):
    - `spend_ratio` (solo se *Vendi al settore*): % della spesa del settore-cliente sul tuo tipo di prodotto.
