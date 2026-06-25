@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { computeMarket, somSuggestion, weighted } from '../market.js'
+import { buildIndex, suggestSectors } from '../match.js'
 import { METRICS } from '../metrics.js'
 import InfoDot from './InfoDot.jsx'
 import { fmtMoneyKeur, fmtPct, fmtCount, fmtRatio } from '../lib.js'
@@ -54,6 +55,8 @@ export default function MarketView({ data }) {
   const leaf = data.meta.max_level
   const byCode = useMemo(() => new Map(data.sectors.map((s) => [s.code, s])), [data])
   const leafSectors = useMemo(() => data.sectors.filter((s) => s.level === leaf), [data, leaf])
+  const matchIndex = useMemo(() => buildIndex(leafSectors), [leafSectors])
+  const suggestions = useMemo(() => suggestSectors(st.prd, matchIndex, 6), [st.prd, matchIndex])
   const selected = st.picked.map((c) => byCode.get(c)).filter(Boolean)
 
   const sumFatt = selected.reduce((a, s) => a + (s.raw.fatturato_keur || 0), 0)
@@ -118,6 +121,22 @@ export default function MarketView({ data }) {
 
       <textarea className="market-prd" placeholder="Descrivi il prodotto che vuoi costruire (PRD)…"
         value={st.prd} onChange={(e) => set({ prd: e.target.value })} />
+
+      {suggestions.length > 0 && (
+        <div className="suggested">
+          <span className="cmp-hint">Settori suggeriti dal PRD — clic per aggiungere<InfoDot text="Proposti da un matcher deterministico (parole chiave + sinonimi sui nomi ATECO). Niente LLM né chiavi: conferma, togli o aggiungi a mano." /></span>
+          <div className="picked">
+            {suggestions.filter((x) => !st.picked.includes(x.code)).map((x) => {
+              const nm = byCode.get(x.code)?.name || x.name
+              return (
+                <span key={x.code} className="pchip sug" onClick={() => set({ picked: [...st.picked, x.code] })}>
+                  + {x.code} {nm.slice(0, 30)}{nm.length > 30 ? '…' : ''}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="market-grid">
         <div className="market-col">
