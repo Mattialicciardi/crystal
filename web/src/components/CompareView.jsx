@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { growthColor, fmtMoneyKeur, fmtCount, fmtPct, fmtRatio } from '../lib.js'
+import InfoDot from './InfoDot.jsx'
+import { METRICS as MREG } from '../metrics.js'
+
+// mappa la metrica locale del confronto -> id del registro condiviso (per le spiegazioni)
+const SHARED = {
+  fatturato_keur: 'fatturato', va_keur: 'valore_agg', produttivita: 'produttivita',
+  redditivita: 'redditivita', struttura: 'struttura', crescita: 'crescita',
+  occupati: 'occupati', imprese: 'imprese',
+}
 
 const BASE = import.meta.env.BASE_URL
 
@@ -86,6 +95,7 @@ export default function CompareView() {
           {METRICS.map((mm) => (
             <button key={mm.key} className={'chip sm' + (metric === mm.key ? ' on' : '')} onClick={() => setMetric(mm.key)}>{mm.label}</button>
           ))}
+          {MREG[SHARED[metric]] && <InfoDot text={MREG[SHARED[metric]].info} />}
         </div>
       </div>
 

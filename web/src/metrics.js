@@ -21,6 +21,10 @@ export const METRICS = {
     label: 'Margine', get: (s) => s.fields?.margine?.value, fmt: fmtPct,
     info: 'Margine operativo lordo su fatturato (MOL/fatturato): potere di prezzo / vantaggio di costo. Alto = settore con margini; basso = spremuto.',
   },
+  redditivita: {
+    label: 'MOL / VA', get: (s) => s.fields.redditivita?.value, fmt: fmtPct,
+    info: 'Margine operativo lordo su valore aggiunto: quota del valore aggiunto che resta come margine operativo.',
+  },
   struttura: {
     label: 'Add. / impresa', get: (s) => s.fields.struttura.value, fmt: fmtRatio,
     info: 'Addetti per impresa: misura la frammentazione. Basso = tante piccole imprese; alto = poche grandi.',

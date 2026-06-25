@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import Treemap from './components/Treemap.jsx'
 import CompareView from './components/CompareView.jsx'
 import ScreenerView from './components/ScreenerView.jsx'
+import InfoDot from './components/InfoDot.jsx'
+import Legend from './components/Legend.jsx'
+import { METRICS } from './metrics.js'
 import {
   VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor,
   fmtMoneyKeur, fmtCount, fmtPct, fmtRatio,
@@ -172,8 +175,9 @@ export default function App() {
         <thead>
           <tr>
             {COLS.map((c) => (
-              <th key={c.key} onClick={() => clickHeader(c)} className={(c.kind === 'name' ? 'l' : 'r') + (sort.key === c.key ? ' sorted' : '')}>
-                {c.label}{sort.key === c.key ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}
+              <th key={c.key} className={(c.kind === 'name' ? 'l' : 'r') + (sort.key === c.key ? ' sorted' : '')}>
+                <span className="th-sort" onClick={() => clickHeader(c)}>{c.label}{sort.key === c.key ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}</span>
+                {c.kind !== 'name' && METRICS[c.key] && <InfoDot text={METRICS[c.key].info} />}
               </th>
             ))}
           </tr>
@@ -192,6 +196,7 @@ export default function App() {
           })}
         </tbody>
       </table>
+      <Legend ids={['fatturato', 'valore_agg', 'produttivita', 'redditivita', 'struttura', 'crescita', 'occupati', 'imprese']} />
       </>)}
 
       <footer className="foot">
