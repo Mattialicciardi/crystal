@@ -9,6 +9,8 @@ scheda è completo (*Coverage*) e **quanto** deriva da osservazione diretta vs. 
 
 Spesa dati: **zero** · Stack cloud: **zero** · LLM nel calcolo: **zero**. Tutto deterministico e ricostruibile da zero.
 
+🔗 **Live:** https://mattialicciardi.github.io/sfera/
+
 ## Architettura a 4 livelli
 
 | Livello | Cosa | Dove |
@@ -42,8 +44,16 @@ python3 pipeline/build.py                # -> data/processed/sectors.json + web/
 
 # 3. sito statico
 cd web && npm install && npm run dev      # sviluppo
-npm run build                             # -> web/dist/ (deploy su GitHub Pages)
+npm run build                             # -> web/dist/
+
+# 4. deploy su GitHub Pages (branch gh-pages)
+./deploy.sh                               # build + push -> https://mattialicciardi.github.io/sfera/
 ```
+
+Il deploy NON rigenera i dati: usa `web/public/sectors.json` versionato. Per aggiornare i dati a un
+nuovo rilascio ISTAT, lancia prima la pipeline (passi 1–2), committa, poi `./deploy.sh`.
+Il token GitHub in uso non ha lo scope `workflow`, quindi il deploy è via script (no GitHub Actions);
+per passare ad auto-deploy: `gh auth refresh -s workflow` e aggiungi un workflow Pages.
 
 ⚠️ **ISTAT SDMX: 5 query/minuto per IP, oltre → ban 1–2 giorni.** La pipeline spazia le query ≥16s.
 Mai lanciarla in parallelo o con agenti concorrenti.
