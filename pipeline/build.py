@@ -18,6 +18,11 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from pipeline import metrics as M
+except ImportError:
+    import metrics as M
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
 OUT = ROOT / "data" / "processed" / "countries" / "IT.json"
@@ -198,6 +203,25 @@ def safe_div(a, b):
     return a / b if (a is not None and b not in (None, 0)) else None
 
 
+def load_sizeclass(path):
+    """CSV SBS per una singola classe di addetti -> {nace: ultimo valore non oscurato (keur)}."""
+    out = {}
+    if not path.exists():
+        return out
+    by = defaultdict(dict)
+    for r in csv.DictReader(path.open(encoding="utf-8")):
+        v = (r.get("OBS_VALUE") or "").strip()
+        if v:
+            try:
+                by[r["ECON_ACTIVITY_NACE_2007"]][r["TIME_PERIOD"]] = float(v)
+            except ValueError:
+                pass
+    for nace, series in by.items():
+        if series:
+            out[nace] = series[max(series)]
+    return out
+
+
 def build():
     names = load_ateco_names(RAW / "istat_dsd.xml")
     data = {dt: load_indicator(RAW / f"istat_{dt}_{name}.csv")
@@ -205,6 +229,9 @@ def build():
 
     have = [INDICATORS[dt] for dt, d in data.items() if d]
     print(f"Indicatori caricati ({len(have)}/{len(INDICATORS)}): {', '.join(have)}")
+    grandi = load_sizeclass(RAW / "istat_12110_grandi.csv")
+    micro = load_sizeclass(RAW / "istat_12110_micro.csv")
+    print(f"Size-class: grandi={len(grandi)} micro={len(micro)} (per concentrazione)")
 
     # universo NACE: unione dei codici visti negli indicatori dimensionali presenti
     universe = set()
@@ -243,6 +270,7 @@ def build():
         imp, imp_s, imp_y = latest("11110")
         dip, dip_s, _ = latest("16130")
         costp, costp_s, _ = latest("13310")
+        inv, inv_s, _ = latest("15110")
         for yy in (fatt_y, va_y, occ_y, imp_y):
             if yy:
                 latest_year = max(latest_year, int(yy))
@@ -280,6 +308,13 @@ def build():
             "assente" if excluded else worst_state(va_s, occ_s) if prod is not None else "assente",
             "ISTAT 12150/16110 (VA/addetto, keur)", va_y, "keur")
 
+        # Margine: MOL/fatturato (potere di prezzo)
+        mar = M.gross_margin(mol, fatt)
+        fields["margine"] = field(
+            round(mar, 4) if mar is not None else None,
+            "assente" if excluded else worst_state(mol_s, fatt_s) if mar is not None else "assente",
+            "ISTAT 12170/12110 (MOL/fatturato)", fatt_y)
+
         # Crescita: CAGR fatturato
         rec_f = data.get("12110", {}).get(code)
         if not excluded and rec_f:
@@ -307,6 +342,13 @@ def build():
         qstate = fields["dimensione"]["state"] if fields["dimensione"]["value"] is not None else "assente"
         fields["qualita_dato"] = field(1.0 if qstate != "assente" else None, qstate, "derivato dai flag", latest_year or None)
 
+        # ---- nuovi segnali opportunità (top-level del settore)
+        conc = None if excluded else M.concentration({
+            "totale": fatt, "grandi": grandi.get(code), "micro": micro.get(code)})
+        trend_series = {y: v for y, (v, st) in rec_f["series"].items()} if rec_f else {}
+        trend = M.growth_trend(trend_series)
+        barriera = {"value": None if excluded else M.barrier_capex_per_worker(inv, occ)}
+
         # ---- Coverage / Confidence
         tot_w = sum(WEIGHTS.values())
         cov_num = sum(w for k, w in WEIGHTS.items() if fields[k]["state"] != "assente")
@@ -327,7 +369,11 @@ def build():
             "raw": {
                 "fatturato_keur": fatt, "valore_aggiunto_keur": va, "mol_keur": mol,
                 "occupati": occ, "imprese": imp, "dipendenti": dip, "costi_personale_keur": costp,
+                "investimenti_keur": inv,
             },
+            "concentrazione": conc,
+            "trend": trend,
+            "barriera": barriera,
             "coverage": round(coverage, 1),
             "confidence": round(confidence, 1),
         })

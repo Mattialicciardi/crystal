@@ -15,6 +15,11 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from pipeline import metrics as M
+except ImportError:
+    import metrics as M
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
 PROC = ROOT / "data" / "processed" / "countries"
@@ -112,6 +117,33 @@ def load_indicator(path):
     return out, geo_arr
 
 
+def load_eurostat_bysize(path):
+    """nace -> geo -> {'grandi': {year:val}, 'micro': {year:val}} da NETTUR per GE250/0-9."""
+    out = defaultdict(lambda: defaultdict(lambda: {"grandi": {}, "micro": {}}))
+    if not path.exists():
+        return out
+    d = json.load(open(path, encoding="utf-8"))
+    dim = d["dimension"]
+    nace_arr = inv(dim["nace_r2"]["category"]["index"])
+    size_arr = inv(dim["size_emp"]["category"]["index"])
+    geo_arr = inv(dim["geo"]["category"]["index"])
+    time_arr = inv(dim["time"]["category"]["index"])
+    ns, ng, nt = len(size_arr), len(geo_arr), len(time_arr)
+    bucket_for = {"GE250": "grandi", "0-9": "micro"}
+    for k, v in d["value"].items():
+        k = int(k)
+        ti = k % nt
+        r = k // nt
+        gi = r % ng
+        r2 = r // ng
+        si = r2 % ns
+        ni = r2 // ns
+        bucket = bucket_for.get(size_arr[si])
+        if bucket:
+            out[nace_arr[ni]][geo_arr[gi]][bucket][time_arr[ti]] = v
+    return out
+
+
 def latest(series):
     for y in sorted(series, reverse=True):
         if series.get(y) is not None:
@@ -146,6 +178,8 @@ def build():
         data[ind] = d
         geos = geos or geo_arr
 
+    bysize = load_eurostat_bysize(RAW / "eurostat_NETTUR_MEUR_bysize.json")
+
     # universo nace per geo
     geo_nace = defaultdict(set)
     for ind in INDICATORS:
@@ -168,8 +202,13 @@ def build():
                 "va_keur": s["raw"]["valore_aggiunto_keur"],
                 "produttivita": s["fields"]["produttivita"]["value"],
                 "redditivita": s["fields"]["redditivita"]["value"],
+                "margine": (s["fields"].get("margine") or {}).get("value"),
                 "struttura": s["fields"]["struttura"]["value"],
                 "crescita": s["fields"]["crescita"]["value"],
+                "trend": (s.get("trend") or {}).get("anni_crescita"),
+                "quota_grandi": (s.get("concentrazione") or {}).get("quota_grandi"),
+                "quota_micro": (s.get("concentrazione") or {}).get("quota_micro"),
+                "barriera": (s.get("barriera") or {}).get("value"),
                 "occupati": s["raw"]["occupati"],
                 "imprese": s["raw"]["imprese"],
             }
@@ -203,6 +242,12 @@ def build():
             red = safe_div(gos, va)
             struc = safe_div(emp, ent)
             grow = cagr(ser["NETTUR_MEUR"])
+            margine = M.gross_margin(gos, fatt)
+            bs = bysize.get(nace, {}).get(geo, {})
+            grandi = latest(bs.get("grandi", {}))
+            micro = latest(bs.get("micro", {}))
+            conc = M.concentration({"totale": fatt, "grandi": grandi, "micro": micro})
+            trend = M.growth_trend(ser["NETTUR_MEUR"])
 
             sectors.append({
                 "code": ateco,
@@ -217,6 +262,7 @@ def build():
                     "redditivita": field(red),
                     "struttura": field(struc),
                     "crescita": field(grow),
+                    "margine": field(margine),
                     "turnover": field(None),
                     "concentrazione": field(None),
                     "qualita_dato": field(None),
@@ -224,7 +270,11 @@ def build():
                 "raw": {
                     "fatturato_keur": fatt_k, "valore_aggiunto_keur": va_k, "mol_keur": gos_k,
                     "occupati": emp, "imprese": ent, "dipendenti": None, "costi_personale_keur": None,
+                    "investimenti_keur": None,
                 },
+                "concentrazione": conc,
+                "trend": trend,
+                "barriera": {"value": None},
             })
 
         payload = {
