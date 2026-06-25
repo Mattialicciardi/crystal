@@ -3,7 +3,8 @@
 **Caratterizzatore settoriale dell'economia europea.** Ricostruisce la mappa strutturale di
 un'economia nazionale settore per settore e attacca a ciascuno un nucleo di metriche economiche
 dure (dimensione, produttività, redditività, struttura, crescita). Esplorabile come **treemap
-decomponibile + tabella**, con **filtro paese** su tutta Europa.
+decomponibile + tabella** con **filtro paese** su tutta Europa, più una modalità **Confronta
+paesi** ("dove è più grande il mercato del settore X?").
 
 🔗 **Live:** https://mattialicciardi.github.io/sfera/
 
@@ -69,6 +70,6 @@ deploy.sh         build + push gh-pages
 ```
 
 ## Roadmap
-- **Confronto cross-country**: "dove è più grande il settore X?" (es. cyber security) — interrogare un settore su tutti i paesi.
 - **L4 — ranking personalizzati**: preset di pesi (Venture/PE/Imprenditore).
 - Modulo concentrazione (quartili/bilanci), turnover via demografia d'impresa.
+- Auto-deploy via GitHub Actions (richiede scope `workflow` sul token).
