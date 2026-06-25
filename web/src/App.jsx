@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Treemap from './components/Treemap.jsx'
 import CompareView from './components/CompareView.jsx'
 import ScreenerView from './components/ScreenerView.jsx'
+import MarketView from './components/MarketView.jsx'
 import InfoDot from './components/InfoDot.jsx'
 import Legend from './components/Legend.jsx'
 import { METRICS } from './metrics.js'
@@ -121,11 +122,13 @@ export default function App() {
           <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Esplora paese</button>
           <button className={'mode' + (mode === 'compare' ? ' on' : '')} onClick={() => setMode('compare')}>Confronta paesi</button>
           <button className={'mode' + (mode === 'screener' ? ' on' : '')} onClick={() => setMode('screener')}>Screener</button>
+          <button className={'mode' + (mode === 'mercato' ? ' on' : '')} onClick={() => setMode('mercato')}>Mercato</button>
         </div>
       </header>
 
       {mode === 'compare' ? <CompareView />
        : mode === 'screener' ? <ScreenerView data={data} country={country} countries={countries} />
+       : mode === 'mercato' ? <MarketView data={data} country={country} countries={countries} />
        : (<>
       <div className="subhead">
         <select className="country-sel" value={country} onChange={(e) => setCountry(e.target.value)}>
