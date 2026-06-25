@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { computeMarket, somSuggestion, weighted } from '../market.js'
+import { METRICS } from '../metrics.js'
 import InfoDot from './InfoDot.jsx'
-import { fmtMoneyKeur, fmtPct } from '../lib.js'
+import { fmtMoneyKeur, fmtPct, fmtCount, fmtRatio } from '../lib.js'
 
+const BASE = import.meta.env.BASE_URL
+const DETAIL_IDS = ['margine', 'crescita', 'trend', 'produttivita', 'struttura', 'conc_grandi', 'barriera']
 const STORE = 'sfera-mercato'
 const DEFAULTS = {
   prd: '', mode: 'compete', picked: [],
@@ -39,7 +42,9 @@ function RangeInput({ label, info, unit, value, onChange, disabled }) {
 export default function MarketView({ data }) {
   const [st, setSt] = useState(loadState)
   const [q, setQ] = useState('')
+  const [compareDoc, setCompareDoc] = useState(null)
   useEffect(() => { localStorage.setItem(STORE, JSON.stringify(st)) }, [st])
+  useEffect(() => { fetch(`${BASE}compare.json`).then((r) => r.json()).then(setCompareDoc).catch(() => {}) }, [])
   const set = (patch) => setSt((s) => ({ ...s, ...patch }))
   const setRange = (key, side, val) => setSt((s) => ({
     ...s, [key]: { ...s[key], [side]: val === '' ? 0 : parseFloat(val) },
@@ -64,6 +69,29 @@ export default function MarketView({ data }) {
     spendRatio: st.mode === 'sellinto' ? toFrac(st.spend) : null,
     addressable: toFrac(st.addr), capturable: toFrac(captEff),
   })
+
+  // arena competitiva (aggregati ponderati per fatturato)
+  const qm = weighted(selected, (s) => s.concentrazione?.quota_micro, (s) => s.raw.fatturato_keur)
+  const sumOcc = selected.reduce((a, s) => a + (s.raw.occupati || 0), 0)
+  const nImprese = selected.reduce((a, s) => a + (s.raw.imprese || 0), 0)
+  const addPerFirm = nImprese ? sumOcc / nImprese : null
+  const playerTipo = nImprese ? sumFatt / nImprese : null
+
+  const crossData = useMemo(() => {
+    if (!compareDoc || !selected.length) return []
+    const groups = new Set(selected.map((s) => (s.level === 'class' ? s.code.slice(0, 3) : s.code)))
+    const byCountry = {}
+    for (const sec of compareDoc.sectors) {
+      if (!groups.has(sec.code)) continue
+      for (const [geo, v] of Object.entries(sec.by)) {
+        if (geo === 'EU27_2020' || v.fatturato_keur == null) continue
+        byCountry[geo] = (byCountry[geo] || 0) + v.fatturato_keur
+      }
+    }
+    return Object.entries(byCountry)
+      .map(([geo, val]) => ({ geo, name: compareDoc.countries[geo] || geo, val }))
+      .sort((a, b) => b.val - a.val)
+  }, [compareDoc, st.picked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addPicked = (e) => {
     const code = e.target.value.split(' · ')[0].trim()
@@ -145,6 +173,53 @@ export default function MarketView({ data }) {
           ))}
         </div>
       </div>
+
+      {selected.length > 0 && (
+        <div className="arena">
+          <h3 className="sec-title">Arena competitiva<InfoDot text="La struttura competitiva del settore dai nostri dati aggregati (niente aziende reali nominate)." /></h3>
+          <div className="arena-grid">
+            <div className="arena-card"><div className="arena-k">Quota grandi (≥250 add.)</div><div className="arena-v">{qg == null ? '—' : fmtPct(qg)}</div></div>
+            <div className="arena-card"><div className="arena-k">Quota micro (&lt;10 add.)</div><div className="arena-v">{qm == null ? '—' : fmtPct(qm)}</div></div>
+            <div className="arena-card"><div className="arena-k">Addetti / impresa</div><div className="arena-v">{addPerFirm == null ? '—' : fmtRatio(addPerFirm)}</div></div>
+            <div className="arena-card"><div className="arena-k">N° imprese</div><div className="arena-v">{fmtCount(nImprese)}</div></div>
+            <div className="arena-card"><div className="arena-k">Player tipo<InfoDot text="Fatturato medio per impresa = fatturato del settore / numero imprese. Media sintetica, NON un'azienda reale." /></div><div className="arena-v">{playerTipo == null ? '—' : fmtMoneyKeur(playerTipo)}</div></div>
+          </div>
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <div className="market-details">
+          <h3 className="sec-title">Dettagli del settore</h3>
+          <table className="grid">
+            <thead>
+              <tr><th className="l">Settore</th>{DETAIL_IDS.map((id) => <th key={id} className="r">{METRICS[id].label}<InfoDot text={METRICS[id].info} /></th>)}</tr>
+            </thead>
+            <tbody>
+              {selected.map((s) => (
+                <tr key={s.code}>
+                  <td className="l"><span className="code">{s.code}</span> {s.name}</td>
+                  {DETAIL_IDS.map((id) => { const v = METRICS[id].get(s); return <td key={id} className="r">{v == null ? '—' : METRICS[id].fmt(v)}</td> })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {selected.length > 0 && crossData.length > 0 && (
+        <div className="market-cross">
+          <h3 className="sec-title">Lo stesso mercato in Europa<InfoDot text="Settori selezionati mappati a 3 cifre e sommati per paese: dove il mercato è più grande. Approssimato al livello comune europeo." /></h3>
+          <div className="bars">
+            {crossData.slice(0, 12).map((r, i) => (
+              <div className="bar-row" key={r.geo}>
+                <div className="bar-name"><span className="bar-rank">{i + 1}</span> {r.name}</div>
+                <div className="bar-track"><div className="bar-fill" style={{ width: Math.max(0.5, 100 * r.val / (crossData[0].val || 1)) + '%', background: '#2dd4bf' }} /></div>
+                <div className="bar-val">{fmtMoneyKeur(r.val)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

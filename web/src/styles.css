@@ -167,6 +167,14 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .funnel-range { font-size: 12.5px; color: var(--mut); font-variant-numeric: tabular-nums; }
 .funnel-sub { font-size: 11px; color: #5e6b80; margin-top: 3px; }
 
+.sec-title { font-size: 14px; font-weight: 600; margin: 24px 0 10px; display: flex; align-items: center; gap: 4px; }
+.arena-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.arena-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; }
+.arena-k { font-size: 11px; color: var(--mut); display: flex; align-items: center; gap: 3px; }
+.arena-v { font-size: 19px; font-weight: 700; color: var(--txt); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.market-details { overflow-x: auto; }
+.market-cross .bars { margin-top: 6px; }
+
 @media (max-width: 720px) { .market-grid { grid-template-columns: 1fr; } }
 
 @media (max-width: 720px) {
