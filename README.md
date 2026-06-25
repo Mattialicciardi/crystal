@@ -10,7 +10,7 @@ paesi** ("dove è più grande il mercato del settore X?").
 
 **Quattro modalità:** *Esplora paese* (treemap + tabella), *Confronta paesi* (un settore su tutta Europa),
 *Screener* (filtri → i settori che convengono: margine, concentrazione, trend, barriera),
-*Mercato* (dato un prodotto/PRD: TAM/SAM/SOM come range + arena competitiva + cross-check europeo).
+*Mercato* (scrivi il PRD → i settori sono suggeriti in automatico, poi TAM/SAM/SOM come range + arena competitiva + cross-check europeo).
 
 Spesa dati: **zero** · Stack cloud: **zero** · LLM nel calcolo: **zero**. Tutto deterministico e ricostruibile da zero.
 
