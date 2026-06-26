@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { computeMarket, somSuggestion, weighted } from '../market.js'
 import { buildIndex, suggestSectors } from '../match.js'
-import { METRICS } from '../metrics.js'
+import { METRICS, ALL_METRIC_IDS } from '../metrics.js'
 import InfoDot from './InfoDot.jsx'
 import { fmtMoneyKeur, fmtPct, fmtCount, fmtRatio } from '../lib.js'
 
 const BASE = import.meta.env.BASE_URL
-const DETAIL_IDS = ['margine', 'crescita', 'trend', 'produttivita', 'struttura', 'conc_grandi', 'barriera']
+const DETAIL_IDS = ALL_METRIC_IDS  // stesse metriche di Esplora/Screener
 const STORE = 'sfera-mercato'
 const DEFAULTS = {
   prd: '', mode: 'compete', picked: [],

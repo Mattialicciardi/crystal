@@ -1,26 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
-import { METRICS } from '../metrics.js'
+import { METRICS, ALL_METRIC_IDS } from '../metrics.js'
 import InfoDot from './InfoDot.jsx'
 import Legend from './Legend.jsx'
 
 const BASE = import.meta.env.BASE_URL
 const MAX_ROWS = 250
 
-// Campi filtrabili dello screener. factor = converte il valore memorizzato nell'unità di filtro.
-const F = (id, unit, factor, ph, extra = {}) => ({
-  id, unit, factor, ph, label: METRICS[id].label, info: METRICS[id].info, fmt: METRICS[id].fmt, ...extra,
-})
-const FIELDS = [
-  F('fatturato', 'Mln €', 1 / 1000, 'es. 100'),
-  F('crescita', '%', 100, 'es. 3'),
-  F('trend', 'anni', 1, 'es. 3'),
-  F('margine', '%', 100, 'es. 15'),
-  F('produttivita', 'k€/add.', 1, 'es. 60'),
-  F('struttura', 'add./impr.', 1, 'es. 5'),
-  F('conc_grandi', '%', 100, 'es. 40'),
-  F('barriera', 'k€/add.', 1, 'es. 30', { itOnly: true }),
-]
-const IDS = FIELDS.map((f) => f.id)
+// TUTTE le metriche (stesso set di Esplora/Mercato); unit/factor dal registro per i filtri.
+const FIELDS = ALL_METRIC_IDS.map((id) => ({
+  id, label: METRICS[id].label, info: METRICS[id].info, fmt: METRICS[id].fmt,
+  unit: METRICS[id].unit, factor: METRICS[id].factor, itOnly: METRICS[id].itOnly,
+}))
+const IDS = ALL_METRIC_IDS
+// id metrica -> chiave in compare.json (modalità Europa)
+const CMP_KEY = {
+  fatturato: 'fatturato_keur', valore_agg: 'va_keur', produttivita: 'produttivita', margine: 'margine',
+  redditivita: 'redditivita', struttura: 'struttura', crescita: 'crescita', trend: 'trend',
+  conc_grandi: 'quota_grandi', conc_micro: 'quota_micro', barriera: 'barriera', occupati: 'occupati', imprese: 'imprese',
+}
 
 // Preset = scorciatoie che impostano i filtri (in unità di filtro). Non sono punteggi.
 const PRESETS = {
@@ -29,27 +26,17 @@ const PRESETS = {
   value: { margine: { min: 20 }, conc_grandi: { min: 40 }, fatturato: { min: 100 } },
 }
 
-// estrae i valori-screener (memorizzati) da un settore (modalità paese)
+// riga piatta con TUTTE le metriche, da un settore (modalità paese)
 function rowFromSector(s, countryName) {
-  return {
-    code: s.code, name: s.name, country: countryName,
-    fatturato: s.raw.fatturato_keur,
-    crescita: s.fields.crescita.value,
-    trend: s.trend?.anni_crescita,
-    margine: s.fields.margine?.value,
-    produttivita: s.fields.produttivita.value,
-    struttura: s.fields.struttura.value,
-    conc_grandi: s.concentrazione?.quota_grandi,
-    barriera: s.barriera?.value,
-  }
+  const row = { code: s.code, name: s.name, country: countryName }
+  for (const id of ALL_METRIC_IDS) row[id] = METRICS[id].get(s)
+  return row
 }
-// estrae da una riga compare (modalità europa)
+// riga piatta con TUTTE le metriche, da una riga compare (modalità europa)
 function rowFromCompare(sec, geo, v, countryName) {
-  return {
-    code: sec.code, name: sec.name, country: countryName,
-    fatturato: v.fatturato_keur, crescita: v.crescita, trend: v.trend, margine: v.margine,
-    produttivita: v.produttivita, struttura: v.struttura, conc_grandi: v.quota_grandi, barriera: v.barriera,
-  }
+  const row = { code: sec.code, name: sec.name, country: countryName }
+  for (const id of ALL_METRIC_IDS) row[id] = v[CMP_KEY[id]] ?? null
+  return row
 }
 
 export default function ScreenerView({ data, country, countries }) {
@@ -153,7 +140,7 @@ export default function ScreenerView({ data, country, countries }) {
             <div key={f.id} className={'filter' + (disabled ? ' disabled' : '')}>
               <span className="filter-lbl">{f.label} <span style={{ color: '#5e6b80' }}>({f.unit})</span><InfoDot text={f.info + (disabled ? ' — non disponibile in questa modalità.' : '')} /></span>
               <div className="filter-inputs">
-                <input type="number" placeholder={'min ' + f.ph} disabled={disabled}
+                <input type="number" placeholder="min" disabled={disabled}
                   value={filters[f.id]?.min ?? ''} onChange={(e) => setF(f.id, 'min', e.target.value)} />
                 <span>–</span>
                 <input type="number" placeholder="max" disabled={disabled}
@@ -170,14 +157,16 @@ export default function ScreenerView({ data, country, countries }) {
         {matched.length > MAX_ROWS && <span> · mostrati i primi {MAX_ROWS}</span>}
       </div>
 
+      <div className="grid-wrap">
       <table className="grid">
         <thead>
           <tr>
             <th className="l">Settore</th>
             {scope === 'europa' && <th className="l">Paese</th>}
             {FIELDS.map((f) => (
-              <th key={f.id} className={'r' + (sort.key === f.id ? ' sorted' : '')} onClick={() => clickHeader(f.id)}>
-                {f.label}{sort.key === f.id ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}
+              <th key={f.id} className={'r' + (sort.key === f.id ? ' sorted' : '')}>
+                <span className="th-sort" onClick={() => clickHeader(f.id)}>{f.label}{sort.key === f.id ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}</span>
+                <InfoDot text={f.info} />
               </th>
             ))}
           </tr>
@@ -194,6 +183,7 @@ export default function ScreenerView({ data, country, countries }) {
           ))}
         </tbody>
       </table>
+      </div>
 
       <Legend ids={IDS} />
     </div>

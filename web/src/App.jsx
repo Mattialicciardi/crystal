@@ -5,25 +5,15 @@ import ScreenerView from './components/ScreenerView.jsx'
 import MarketView from './components/MarketView.jsx'
 import InfoDot from './components/InfoDot.jsx'
 import Legend from './components/Legend.jsx'
-import { METRICS } from './metrics.js'
+import { METRICS, ALL_METRIC_IDS } from './metrics.js'
 import {
   VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor,
-  fmtMoneyKeur, fmtCount, fmtPct, fmtRatio,
 } from './lib.js'
 
 const BASE = import.meta.env.BASE_URL
 
-const COLS = [
-  { key: 'name',         label: 'Settore',        kind: 'name' },
-  { key: 'fatturato',    label: 'Fatturato',      kind: 'money', get: (s) => s.raw.fatturato_keur },
-  { key: 'valore_agg',   label: 'Valore aggiunto',kind: 'money', get: (s) => s.raw.valore_aggiunto_keur },
-  { key: 'produttivita', label: 'VA / addetto',   kind: 'money', get: (s) => s.fields.produttivita.value },
-  { key: 'redditivita',  label: 'MOL / VA',       kind: 'pct',   get: (s) => s.fields.redditivita.value },
-  { key: 'struttura',    label: 'Add. / impresa', kind: 'ratio', get: (s) => s.fields.struttura.value },
-  { key: 'crescita',     label: 'CAGR fatt.',     kind: 'pct',   get: (s) => s.fields.crescita.value },
-  { key: 'occupati',     label: 'Occupati',       kind: 'count', get: (s) => s.raw.occupati },
-  { key: 'imprese',      label: 'Imprese',        kind: 'count', get: (s) => s.raw.imprese },
-]
+// Colonne = Settore + TUTTE le metriche (stesso set di Screener/Mercato).
+const COLS = [{ key: 'name', label: 'Settore' }, ...ALL_METRIC_IDS.map((id) => ({ key: id, label: METRICS[id].label }))]
 
 const PRESETS = [
   { id: 'fatturato',      label: 'Dimensione',     size: 'fatturato',       sort: 'fatturato',    dir: 'desc' },
@@ -32,15 +22,6 @@ const PRESETS = [
   { id: 'crescita',       label: 'Crescita',       size: 'fatturato',       sort: 'crescita',     dir: 'desc' },
   { id: 'frammentazione', label: 'Frammentazione', size: 'imprese',         sort: 'struttura',    dir: 'asc'  },
 ]
-
-function fmtCell(kind, v) {
-  if (v == null) return '—'
-  if (kind === 'money') return fmtMoneyKeur(v)
-  if (kind === 'pct') return fmtPct(v)
-  if (kind === 'ratio') return fmtRatio(v)
-  if (kind === 'count') return fmtCount(v)
-  return v
-}
 
 export default function App() {
   const [countries, setCountries] = useState(null)
@@ -90,10 +71,10 @@ export default function App() {
   const currentCode = path.length ? path[path.length - 1] : null
   const items = (childrenOf.get(currentCode ?? '__root__') || []).slice()
 
-  const col = COLS.find((c) => c.key === sort.key) || COLS[1]
   items.sort((a, b) => {
-    if (col.kind === 'name') return sort.dir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    const va = col.get(a), vb = col.get(b)
+    if (sort.key === 'name') return sort.dir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+    const g = METRICS[sort.key].get
+    const va = g(a), vb = g(b)
     const na = va == null ? -Infinity : va, nb = vb == null ? -Infinity : vb
     return sort.dir === 'asc' ? na - nb : nb - na
   })
@@ -174,13 +155,14 @@ export default function App() {
         <span className="hint">clic su un riquadro o riga per scendere · clic intestazione per ordinare</span>
       </div>
 
+      <div className="grid-wrap">
       <table className="grid">
         <thead>
           <tr>
             {COLS.map((c) => (
-              <th key={c.key} className={(c.kind === 'name' ? 'l' : 'r') + (sort.key === c.key ? ' sorted' : '')}>
+              <th key={c.key} className={(c.key === 'name' ? 'l' : 'r') + (sort.key === c.key ? ' sorted' : '')}>
                 <span className="th-sort" onClick={() => clickHeader(c)}>{c.label}{sort.key === c.key ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}</span>
-                {c.kind !== 'name' && METRICS[c.key] && <InfoDot text={METRICS[c.key].info} />}
+                {c.key !== 'name' && <InfoDot text={METRICS[c.key].info} />}
               </th>
             ))}
           </tr>
@@ -192,14 +174,15 @@ export default function App() {
               <tr key={s.code} data-code={s.code} className={drillable ? 'drillable' : ''} onClick={() => drillable && drill(s.code)}>
                 <td className="l"><span className="code">{s.code}</span> {s.name}</td>
                 {COLS.slice(1).map((c) => (
-                  <td key={c.key} className="r">{fmtCell(c.kind, c.get(s))}</td>
+                  <td key={c.key} className="r">{METRICS[c.key].fmt(METRICS[c.key].get(s))}</td>
                 ))}
               </tr>
             )
           })}
         </tbody>
       </table>
-      <Legend ids={['fatturato', 'valore_agg', 'produttivita', 'redditivita', 'struttura', 'crescita', 'occupati', 'imprese']} />
+      </div>
+      <Legend ids={ALL_METRIC_IDS} />
       </>)}
 
       <footer className="foot">
