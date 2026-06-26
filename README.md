@@ -1,4 +1,6 @@
-# Sfera
+# Crystal
+
+> *(ex Sfera)* — sfera di cristallo per market intelligence: dalla mappa settoriale dell'economia europea fino alle singole aziende.
 
 **Caratterizzatore settoriale dell'economia europea.** Ricostruisce la mappa strutturale di
 un'economia nazionale settore per settore e attacca a ciascuno un nucleo di metriche economiche

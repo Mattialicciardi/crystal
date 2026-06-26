@@ -46,6 +46,8 @@ COUNTRY_NAMES = {
     "MK": "Macedonia del Nord", "AL": "Albania", "RS": "Serbia",
 }
 EXCLUDED_SECTIONS = {"K", "O"}
+# Focus Europa: teniamo EU-27 + EFTA (CH, NO, IS) + aggregato UE27; via i candidati extra-UE con dati sparsi.
+EXCLUDED_GEOS = {"AL", "BA", "ME", "MK", "RS"}
 
 
 # ---- nomi ATECO italiani dalla DSD ISTAT
@@ -214,8 +216,8 @@ def build():
             }
 
     for geo in sorted(geo_nace):
-        if geo == "IT":
-            continue  # Italia = ISTAT 4 cifre (build.py)
+        if geo == "IT" or geo in EXCLUDED_GEOS:
+            continue  # Italia = ISTAT 4 cifre (build.py); esclusi i candidati extra-UE
         sectors = []
         latest_year = 0
         for nace in sorted(geo_nace[geo]):

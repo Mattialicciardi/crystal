@@ -117,7 +117,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="hero">
-        <h1>Sfera</h1>
+        <h1>Crystal</h1>
         <div className="modes">
           <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Esplora paese</button>
           <button className={'mode' + (mode === 'compare' ? ' on' : '')} onClick={() => setMode('compare')}>Confronta paesi</button>
