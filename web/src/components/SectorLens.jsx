@@ -657,6 +657,18 @@ export default function SectorLens({
     margin == null ? null : clamp01(margin / 0.2),
     largeShare == null ? null : clamp01(largeShare / 0.5),
   ])
+  const dataAdequacyScore = avgDefined([
+    clamp01((coverage ?? 0) / 100),
+    clamp01((confidence ?? 0) / 100),
+    clamp01([
+      companyWorkers,
+      productivity,
+      margin,
+      largeShare,
+      microShare,
+      barrier,
+    ].filter((value) => value != null && !Number.isNaN(value)).length / 6),
+  ])
 
   return (
     <section className="focus">
@@ -760,6 +772,11 @@ export default function SectorLens({
             <span>Difendibilità</span>
             <strong>{scoreLabel(defensibilityScore)}</strong>
             <em>{business.dominantDriver}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Adeguatezza dati</span>
+            <strong>{scoreLabel(dataAdequacyScore)}</strong>
+            <em>{coverage == null ? 'coverage non disponibile' : `${formatShare(coverage / 100)} coverage · ${formatShare(confidence / 100)} confidence`}</em>
           </div>
         </div>
       </div>
