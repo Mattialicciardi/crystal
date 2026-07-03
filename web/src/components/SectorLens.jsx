@@ -221,11 +221,54 @@ function ShareBar({ label, value, tone = 'teal' }) {
   )
 }
 
+function comparePercentile(value, peers, getter) {
+  if (value == null || !peers?.length) return null
+  const values = peers.map((peer) => getter(peer)).filter((peerValue) => peerValue != null && !Number.isNaN(peerValue))
+  if (!values.length) return null
+  const sorted = [...values].sort((left, right) => left - right)
+  const below = sorted.filter((peerValue) => peerValue <= value).length
+  const percentile = below / sorted.length
+  return {
+    percentile,
+    rank: below,
+    total: sorted.length,
+    median: sorted[Math.floor((sorted.length - 1) / 2)],
+  }
+}
+
+function PeerCard({ label, value, peer, note, tone = 'neutral' }) {
+  const percentile = peer?.percentile
+  const width = percentile == null ? 0 : Math.max(4, percentile * 100)
+  const descriptor =
+    percentile == null ? 'non confrontabile'
+      : percentile >= 0.8 ? 'top quartile'
+      : percentile >= 0.5 ? 'sopra mediana'
+      : percentile >= 0.2 ? 'sotto mediana'
+      : 'bottom quartile'
+  return (
+    <div className={`peer-card ${tone}`}>
+      <div className="peer-head">
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <div className="peer-bar">
+        <i style={{ width: `${width}%` }} />
+      </div>
+      <div className="peer-foot">
+        <span>{descriptor}</span>
+        <em>{peer == null ? 'nessun confronto disponibile' : `${peer.rank}/${peer.total} pari`}</em>
+      </div>
+      <div className="peer-note">{note}</div>
+    </div>
+  )
+}
+
 export default function SectorLens({
   focus,
   lineage,
   directChildren,
   leafDescendants,
+  peerGroup,
   sizeKey,
   sizeLabel,
   onDrill,
@@ -266,6 +309,56 @@ export default function SectorLens({
   const molShareOnVa = valueAdded ? mol / valueAdded : null
   const investShareOnRevenue = focus.raw?.fatturato_keur ? invest / focus.raw.fatturato_keur : null
   const business = buildArchetype(focus)
+  const peerCards = [
+    {
+      key: 'scale',
+      label: 'Scala',
+      value: companyWorkers == null ? '—' : fmtRatio(companyWorkers),
+      peer: comparePercentile(companyWorkers, peerGroup, (s) => (s.raw?.imprese ? s.raw.occupati / s.raw.imprese : null)),
+      note: 'addetti per impresa rispetto alle nicchie sorelle',
+      tone: 'blue',
+    },
+    {
+      key: 'productivity',
+      label: 'Produttività',
+      value: productivity == null ? '—' : fmtMoneyKeur(productivity),
+      peer: comparePercentile(productivity, peerGroup, (s) => s.fields?.produttivita?.value),
+      note: 'VA/addetto rispetto ai pari',
+      tone: 'teal',
+    },
+    {
+      key: 'margin',
+      label: 'Margine',
+      value: margin == null ? '—' : fmtPct(margin),
+      peer: comparePercentile(margin, peerGroup, (s) => s.fields?.margine?.value),
+      note: 'MOL/fatturato nella nicchia madre',
+      tone: 'amber',
+    },
+    {
+      key: 'market',
+      label: 'Mercato',
+      value: largeShare == null ? '—' : fmtPct(largeShare),
+      peer: comparePercentile(largeShare, peerGroup, (s) => s.concentrazione?.quota_grandi),
+      note: 'quota grandi = concentrazione del campo',
+      tone: 'blue',
+    },
+    {
+      key: 'fragmentation',
+      label: 'Frammentazione',
+      value: microShare == null ? '—' : fmtPct(microShare),
+      peer: comparePercentile(microShare, peerGroup, (s) => s.concentrazione?.quota_micro),
+      note: 'quota micro = coda lunga',
+      tone: 'amber',
+    },
+    {
+      key: 'moat',
+      label: 'Barriera',
+      value: barrier == null ? '—' : fmtMoneyKeur(barrier),
+      peer: comparePercentile(barrier, peerGroup, (s) => s.barriera?.value),
+      note: 'investimenti per addetto come proxy del moat',
+      tone: 'teal',
+    },
+  ]
   const operatingRows = [
     { label: 'Fatturato', total: focus.raw?.fatturato_keur, share: null, perFirm: perFirmRevenue, perWorker: perWorkerRevenue },
     { label: 'Valore aggiunto', total: valueAdded, share: vaShareOnRevenue, perFirm: perFirmVa, perWorker: perWorkerVa },
@@ -346,6 +439,21 @@ export default function SectorLens({
         <ul className="business-diagnostics">
           {business.diagnostics.map((item) => <li key={item}>{item}</li>)}
         </ul>
+        <div className="peer-section">
+          <h4 className="peer-title">Posizione rispetto ai pari</h4>
+          <div className="peer-grid">
+            {peerCards.map((card) => (
+              <PeerCard
+                key={card.key}
+                label={card.label}
+                value={card.value}
+                peer={card.peer}
+                note={card.note}
+                tone={card.tone}
+              />
+            ))}
+          </div>
+        </div>
         <div className="company-stack">
           <div className="company-stack-head">
             <span>Su 100 di fatturato</span>

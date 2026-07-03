@@ -99,6 +99,7 @@ export default function App() {
   const focus = currentCode ? index.get(currentCode) : null
   const focusChildren = currentCode ? (childrenOf.get(currentCode) || []) : (childrenOf.get('__root__') || [])
   const focusLeaves = currentCode ? collectLeafDescendants(currentCode) : []
+  const focusPeers = focus ? (childrenOf.get(focus.parent ?? '__root__') || []) : []
 
   const applyPreset = (p) => { setPreset(p.id); setSizeKey(p.size); setSort({ key: p.sort, dir: p.dir }) }
   const drill = (code) => setPath([...path, code])
@@ -166,6 +167,7 @@ export default function App() {
           lineage={crumbs}
           directChildren={focusChildren}
           leafDescendants={focusLeaves}
+          peerGroup={focusPeers}
           sizeKey={view.sizeKey}
           sizeLabel={view.label}
           sizeFmt={(value) => (view.kind === 'money' ? fmtMoneyKeur(value) : fmtCount(value))}
