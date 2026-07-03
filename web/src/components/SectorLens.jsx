@@ -56,6 +56,26 @@ function MetricCard({ label, value, note }) {
   )
 }
 
+function clamp01(value) {
+  if (value == null || Number.isNaN(value)) return null
+  return Math.max(0, Math.min(1, value))
+}
+
+function ShareBar({ label, value, tone = 'teal' }) {
+  const shown = clamp01(value)
+  return (
+    <div className="share-row">
+      <div className="share-top">
+        <span>{label}</span>
+        <strong>{shown == null ? '—' : fmtPct(shown)}</strong>
+      </div>
+      <div className="share-track">
+        <div className={`share-fill ${tone}`} style={{ width: shown == null ? '0%' : `${Math.max(4, shown * 100)}%` }} />
+      </div>
+    </div>
+  )
+}
+
 export default function SectorLens({
   focus,
   lineage,
@@ -82,6 +102,19 @@ export default function SectorLens({
   const coverage = focus.coverage
   const childCount = directChildren.length
   const leafCount = leafDescendants.length
+  const valueAdded = focus.raw?.valore_aggiunto_keur ?? null
+  const payroll = focus.raw?.costi_personale_keur ?? null
+  const mol = focus.raw?.mol_keur ?? null
+  const invest = focus.raw?.investimenti_keur ?? null
+  const perFirmRevenue = focus.raw?.imprese ? focus.raw.fatturato_keur / focus.raw.imprese : null
+  const perFirmVa = focus.raw?.imprese ? focus.raw.valore_aggiunto_keur / focus.raw.imprese : null
+  const perFirmMol = focus.raw?.imprese ? focus.raw.mol_keur / focus.raw.imprese : null
+  const perWorkerRevenue = focus.raw?.occupati ? focus.raw.fatturato_keur / focus.raw.occupati : null
+  const perWorkerVa = focus.raw?.occupati ? focus.raw.valore_aggiunto_keur / focus.raw.occupati : null
+  const perWorkerInvest = focus.raw?.occupati ? focus.raw.investimenti_keur / focus.raw.occupati : null
+  const vaShareOnRevenue = focus.raw?.fatturato_keur ? valueAdded / focus.raw.fatturato_keur : null
+  const payrollShareOnVa = valueAdded ? payroll / valueAdded : null
+  const molShareOnVa = valueAdded ? mol / valueAdded : null
 
   const directRows = [...directChildren].sort((left, right) => (right.raw?.[sizeKey] || 0) - (left.raw?.[sizeKey] || 0))
   const leafRows = [...leafDescendants].sort((left, right) => (right.raw?.fatturato_keur || 0) - (left.raw?.fatturato_keur || 0))
@@ -130,22 +163,51 @@ export default function SectorLens({
       <div className="focus-block">
         <h3 className="sec-title">Lente aziendale <InfoDot text="Non è una singola azienda reale: è una lettura operativa del settore come se fosse un'impresa media, usando i rapporti strutturali disponibili." /></h3>
         <p className="focus-copy">{sectorNarrative(focus)}</p>
+        <div className="company-stack">
+          <div className="company-stack-head">
+            <span>Su 100 di fatturato</span>
+            <strong>{vaShareOnRevenue == null ? '—' : `${fmtPct(vaShareOnRevenue)} di valore aggiunto`}</strong>
+          </div>
+          <div className="company-track">
+            <div className="company-fill va" style={{ width: vaShareOnRevenue == null ? '0%' : `${Math.max(4, vaShareOnRevenue * 100)}%` }} />
+          </div>
+          <div className="company-split">
+            <ShareBar label="Costo del personale su VA" value={payrollShareOnVa} tone="payroll" />
+            <ShareBar label="MOL su VA" value={molShareOnVa} tone="mol" />
+          </div>
+        </div>
         <div className="focus-mini-grid">
           <div className="focus-mini">
             <span>Ricavo medio per impresa</span>
             <strong>{companyRevenue == null ? '—' : fmtMoneyKeur(companyRevenue)}</strong>
           </div>
           <div className="focus-mini">
+            <span>Valore aggiunto per impresa</span>
+            <strong>{perFirmVa == null ? '—' : fmtMoneyKeur(perFirmVa)}</strong>
+          </div>
+          <div className="focus-mini">
+            <span>MOL per impresa</span>
+            <strong>{perFirmMol == null ? '—' : fmtMoneyKeur(perFirmMol)}</strong>
+          </div>
+          <div className="focus-mini">
             <span>Addetti medi per impresa</span>
             <strong>{companyWorkers == null ? '—' : fmtRatio(companyWorkers)}</strong>
           </div>
           <div className="focus-mini">
-            <span>Produttività</span>
-            <strong>{productivity == null ? '—' : fmtMoneyKeur(productivity)}</strong>
+            <span>Ricavo per addetto</span>
+            <strong>{perWorkerRevenue == null ? '—' : fmtMoneyKeur(perWorkerRevenue)}</strong>
           </div>
           <div className="focus-mini">
-            <span>Barriera di entrata</span>
-            <strong>{barrier == null ? '—' : fmtMoneyKeur(barrier)}</strong>
+            <span>VA per addetto</span>
+            <strong>{perWorkerVa == null ? '—' : fmtMoneyKeur(perWorkerVa)}</strong>
+          </div>
+          <div className="focus-mini">
+            <span>Investimenti per addetto</span>
+            <strong>{perWorkerInvest == null ? '—' : fmtMoneyKeur(perWorkerInvest)}</strong>
+          </div>
+          <div className="focus-mini">
+            <span>Investimenti totali</span>
+            <strong>{invest == null ? '—' : fmtMoneyKeur(invest)}</strong>
           </div>
         </div>
       </div>
