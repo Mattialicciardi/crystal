@@ -159,6 +159,8 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .focus-mini { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; }
 .focus-mini span { display: block; color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
 .focus-mini strong { display: block; margin-top: 5px; font-size: 17px; }
+.business-badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; }
+.business-chip { background: linear-gradient(180deg, #132337, #101724); color: var(--teal); border-color: #254155; text-transform: none; letter-spacing: 0; font-weight: 700; }
 .company-stack { margin: 10px 0 14px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #0f1521; }
 .company-stack-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; color: var(--mut); }
 .company-stack-head strong { color: var(--txt); font-size: 13px; }
@@ -174,6 +176,9 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .share-fill.teal { background: linear-gradient(90deg, #2dd4bf, #14b8a6); }
 .share-fill.payroll { background: linear-gradient(90deg, #f59e0b, #f97316); }
 .share-fill.mol { background: linear-gradient(90deg, #60a5fa, #818cf8); }
+.operating-table { margin-top: 12px; }
+.operating-table thead th { background: transparent; font-size: 10px; }
+.operating-table td { font-variant-numeric: tabular-nums; }
 .focus-table thead th { background: transparent; }
 .focus-leaves { display: flex; flex-wrap: wrap; gap: 8px; }
 .leaf-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--txt); border-radius: 999px; padding: 7px 11px; cursor: pointer; font-size: 12px; }

@@ -40,10 +40,73 @@ function buildTags(sector) {
   return tags
 }
 
-function sectorNarrative(sector) {
-  const tags = buildTags(sector)
-  if (!tags.length) return 'Il dataset qui parla ancora a frammenti: il profilo esiste, ma non basta per un giudizio netto.'
-  return `Firma tipo: ${tags.join(' · ')}.`
+function deriveBand(value, bands) {
+  if (value == null || Number.isNaN(value)) return null
+  for (const band of bands) {
+    if (band.max != null && value <= band.max) return band.label
+    if (band.min != null && value >= band.min && band.max == null) return band.label
+    if (band.min == null && band.max == null) return band.label
+  }
+  return null
+}
+
+function buildArchetype(sector) {
+  const revenuePerFirm = sector.raw?.imprese ? sector.raw.fatturato_keur / sector.raw.imprese : null
+  const workersPerFirm = sector.raw?.imprese ? sector.raw.occupati / sector.raw.imprese : null
+  const vaMargin = sector.raw?.fatturato_keur ? sector.raw.valore_aggiunto_keur / sector.raw.fatturato_keur : null
+  const payrollOnVa = sector.raw?.valore_aggiunto_keur ? sector.raw.costi_personale_keur / sector.raw.valore_aggiunto_keur : null
+  const capexIntensity = sector.raw?.fatturato_keur ? sector.raw.investimenti_keur / sector.raw.fatturato_keur : null
+  const largeShare = sector.concentrazione?.quota_grandi
+  const microShare = sector.concentrazione?.quota_micro
+  const margin = sector.fields?.margine?.value
+  const productivity = sector.fields?.produttivita?.value
+  const structure = sector.fields?.struttura?.value
+  const barrier = sector.barriera?.value
+
+  const structureBand = deriveBand(workersPerFirm, [
+    { max: 3, label: 'micro-organizzazione' },
+    { max: 10, label: 'PMI snella' },
+    { max: 30, label: 'PMI strutturata' },
+    { min: 30, label: 'azienda industriale' },
+  ])
+  const intensityBand = deriveBand(payrollOnVa, [
+    { max: 0.35, label: 'labor-light' },
+    { max: 0.7, label: 'labor-balanced' },
+    { min: 0.7, label: 'labor-heavy' },
+  ])
+  const capitalBand = deriveBand(capexIntensity, [
+    { max: 0.03, label: 'asset-light' },
+    { max: 0.08, label: 'capex moderato' },
+    { min: 0.08, label: 'capex-heavy' },
+  ])
+  const marketBand = deriveBand(largeShare, [
+    { max: 0.2, label: 'frammentato' },
+    { max: 0.5, label: 'intermedio' },
+    { min: 0.5, label: 'concentrato' },
+  ])
+  const marginBand = deriveBand(margin, [
+    { max: 0.08, label: 'margini stretti' },
+    { max: 0.2, label: 'margini sani' },
+    { min: 0.2, label: 'margini forti' },
+  ])
+  const productivityBand = deriveBand(productivity, [
+    { max: 70, label: 'produttività bassa' },
+    { max: 150, label: 'produttività media' },
+    { min: 150, label: 'produttività alta' },
+  ])
+  const labels = [structureBand, intensityBand, capitalBand, marketBand, marginBand, productivityBand].filter(Boolean)
+  const companyType = labels.length ? labels.join(' · ') : 'profilo misto'
+  const narrativeParts = []
+  if (workersPerFirm != null) narrativeParts.push(`${fmtRatio(workersPerFirm)} addetti per impresa`)
+  if (revenuePerFirm != null) narrativeParts.push(`${fmtMoneyKeur(revenuePerFirm)} di ricavo medio per impresa`)
+  if (vaMargin != null) narrativeParts.push(`${fmtPct(vaMargin)} di VA su fatturato`)
+  if (payrollOnVa != null) narrativeParts.push(`${fmtPct(payrollOnVa)} di costo del personale sul VA`)
+  if (capitalBand) narrativeParts.push(capitalBand)
+  if (barrier != null) narrativeParts.push(`barriera ~ ${fmtMoneyKeur(barrier)}`)
+  if (largeShare != null || microShare != null) {
+    narrativeParts.push(`struttura mercato ${largeShare != null ? fmtPct(largeShare) : '—'} grandi / ${microShare != null ? fmtPct(microShare) : '—'} micro`)
+  }
+  return { companyType, narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario' }
 }
 
 function MetricCard({ label, value, note }) {
@@ -109,12 +172,25 @@ export default function SectorLens({
   const perFirmRevenue = focus.raw?.imprese ? focus.raw.fatturato_keur / focus.raw.imprese : null
   const perFirmVa = focus.raw?.imprese ? focus.raw.valore_aggiunto_keur / focus.raw.imprese : null
   const perFirmMol = focus.raw?.imprese ? focus.raw.mol_keur / focus.raw.imprese : null
+  const perFirmPayroll = focus.raw?.imprese ? focus.raw.costi_personale_keur / focus.raw.imprese : null
+  const perFirmInvest = focus.raw?.imprese ? focus.raw.investimenti_keur / focus.raw.imprese : null
   const perWorkerRevenue = focus.raw?.occupati ? focus.raw.fatturato_keur / focus.raw.occupati : null
   const perWorkerVa = focus.raw?.occupati ? focus.raw.valore_aggiunto_keur / focus.raw.occupati : null
+  const perWorkerPayroll = focus.raw?.occupati ? focus.raw.costi_personale_keur / focus.raw.occupati : null
+  const perWorkerMol = focus.raw?.occupati ? focus.raw.mol_keur / focus.raw.occupati : null
   const perWorkerInvest = focus.raw?.occupati ? focus.raw.investimenti_keur / focus.raw.occupati : null
   const vaShareOnRevenue = focus.raw?.fatturato_keur ? valueAdded / focus.raw.fatturato_keur : null
   const payrollShareOnVa = valueAdded ? payroll / valueAdded : null
   const molShareOnVa = valueAdded ? mol / valueAdded : null
+  const investShareOnRevenue = focus.raw?.fatturato_keur ? invest / focus.raw.fatturato_keur : null
+  const business = buildArchetype(focus)
+  const operatingRows = [
+    { label: 'Fatturato', total: focus.raw?.fatturato_keur, share: null, perFirm: perFirmRevenue, perWorker: perWorkerRevenue },
+    { label: 'Valore aggiunto', total: valueAdded, share: vaShareOnRevenue, perFirm: perFirmVa, perWorker: perWorkerVa },
+    { label: 'Costo del personale', total: payroll, share: payrollShareOnVa, perFirm: perFirmPayroll, perWorker: perWorkerPayroll },
+    { label: 'MOL', total: mol, share: molShareOnVa, perFirm: perFirmMol, perWorker: perWorkerMol },
+    { label: 'Investimenti', total: invest, share: investShareOnRevenue, perFirm: perFirmInvest, perWorker: perWorkerInvest },
+  ]
 
   const directRows = [...directChildren].sort((left, right) => (right.raw?.[sizeKey] || 0) - (left.raw?.[sizeKey] || 0))
   const leafRows = [...leafDescendants].sort((left, right) => (right.raw?.fatturato_keur || 0) - (left.raw?.fatturato_keur || 0))
@@ -162,7 +238,10 @@ export default function SectorLens({
 
       <div className="focus-block">
         <h3 className="sec-title">Lente aziendale <InfoDot text="Non è una singola azienda reale: è una lettura operativa del settore come se fosse un'impresa media, usando i rapporti strutturali disponibili." /></h3>
-        <p className="focus-copy">{sectorNarrative(focus)}</p>
+        <div className="business-badge-row">
+          <span className="focus-chip business-chip">{business.companyType}</span>
+        </div>
+        <p className="focus-copy">{business.narrative}</p>
         <div className="company-stack">
           <div className="company-stack-head">
             <span>Su 100 di fatturato</span>
@@ -175,6 +254,30 @@ export default function SectorLens({
             <ShareBar label="Costo del personale su VA" value={payrollShareOnVa} tone="payroll" />
             <ShareBar label="MOL su VA" value={molShareOnVa} tone="mol" />
           </div>
+        </div>
+        <div className="grid-wrap">
+          <table className="grid operating-table">
+            <thead>
+              <tr>
+                <th className="l">Voce</th>
+                <th className="r">Totale</th>
+                <th className="r">Su fatturato</th>
+                <th className="r">Per impresa</th>
+                <th className="r">Per addetto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {operatingRows.map((row) => (
+                <tr key={row.label}>
+                  <td className="l">{row.label}</td>
+                  <td className="r">{row.total == null ? '—' : fmtMoneyKeur(row.total)}</td>
+                  <td className="r">{row.share == null ? '—' : fmtPct(row.share)}</td>
+                  <td className="r">{row.perFirm == null ? '—' : fmtMoneyKeur(row.perFirm)}</td>
+                  <td className="r">{row.perWorker == null ? '—' : fmtMoneyKeur(row.perWorker)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
         <div className="focus-mini-grid">
           <div className="focus-mini">
