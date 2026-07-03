@@ -180,6 +180,17 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .business-frame-card.blue strong { color: #60a5fa; }
 .business-frame-card.amber strong { color: #f59e0b; }
 .business-frame-card.neutral strong { color: var(--txt); }
+.company-model { margin: 10px 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, #0f1521, #0c121d); }
+.company-model-title { margin: 0; color: var(--txt); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.company-model-copy { margin: 6px 0 10px; color: #94a3b8; font-size: 12.5px; line-height: 1.5; }
+.company-model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.company-model-card { display: flex; flex-direction: column; gap: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.company-model-card span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
+.company-model-card strong { font-size: 14px; line-height: 1.25; }
+.company-model-card em { color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
+.company-model-card.blue strong { color: #60a5fa; }
+.company-model-card.teal strong { color: var(--teal); }
+.company-model-card.amber strong { color: #f59e0b; }
 .business-diagnostics { margin: 8px 0 12px; padding: 0 0 0 18px; color: #c5cedb; font-size: 12.5px; line-height: 1.5; display: grid; gap: 4px; }
 .peer-section { margin: 10px 0 14px; }
 .peer-title { margin: 0 0 10px; color: var(--txt); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }

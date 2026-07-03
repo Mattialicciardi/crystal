@@ -188,7 +188,69 @@ function buildArchetype(sector) {
   if (microShare != null && microShare >= 0.25) diagnostics.push('coda lunga: molti piccoli attori restano rilevanti')
   if (barrier != null && barrier >= 100) diagnostics.push('barriera d’ingresso alta: serve capitale per stare sul mercato')
   if (!diagnostics.length) diagnostics.push('profilo ancora ibrido: leggere il nodo con le sotto-nicchie immediate')
-  return { companyType, narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario', signals, summary, companyFrame, diagnostics }
+
+  const revenueEngine = (() => {
+    if (productivity != null && productivity >= 150) return 'leva valore/produttività'
+    if (largeShare != null && largeShare >= 0.5) return 'leva scala e posizione di mercato'
+    if (margin != null && margin >= 0.2) return 'leva pricing e mix'
+    return 'leva volume e controllo costi'
+  })()
+
+  const costEngine = (() => {
+    if (payrollOnVa == null) return 'costo del personale non leggibile'
+    if (payrollOnVa >= 0.7) return 'costo lavoro dominante sul VA'
+    if (payrollOnVa >= 0.45) return 'costi lavoro bilanciati con margine'
+    return 'costo lavoro contenuto rispetto al VA'
+  })()
+
+  const capitalEngine = (() => {
+    if (capexIntensity == null) return 'intensità capitale non leggibile'
+    if (capexIntensity >= 0.08) return 'modello capital intensive'
+    if (capexIntensity >= 0.03) return 'modello a capitale moderato'
+    return 'modello capital light'
+  })()
+
+  const marketEngine = (() => {
+    if (largeShare == null) return 'mercato non classificabile'
+    if (largeShare >= 0.5) return 'mercato concentrato'
+    if (largeShare <= 0.2) return 'mercato frammentato'
+    return 'mercato intermedio'
+  })()
+
+  const operatingRisk = []
+  if (margin != null && margin <= 0.08) operatingRisk.push('rischio pricing')
+  if (capitalBand === 'capex-heavy') operatingRisk.push('rischio capitale')
+  if (intensityBand === 'labor-heavy') operatingRisk.push('rischio costo lavoro')
+  if (microShare != null && microShare >= 0.25) operatingRisk.push('coda lunga difficile da consolidare')
+  if (largeShare != null && largeShare >= 0.5) operatingRisk.push('dipendenza dai grandi player')
+  if (barrier != null && barrier >= 100) operatingRisk.push('barriera alta per nuovi entranti')
+  if (!operatingRisk.length) operatingRisk.push('profilo rischi bilanciato o poco leggibile')
+
+  const companyModel = [
+    { key: 'revenue', label: 'Motore ricavi', value: revenueEngine, detail: revenuePerFirm == null ? 'ricavo medio non disponibile' : `${fmtMoneyKeur(revenuePerFirm)} per impresa`, tone: 'blue' },
+    { key: 'cost', label: 'Motore costi', value: costEngine, detail: payrollOnVa == null ? 'costo lavoro non disponibile' : `${fmtPct(payrollOnVa)} del VA in personale`, tone: 'amber' },
+    { key: 'capital', label: 'Motore capitale', value: capitalEngine, detail: capexIntensity == null ? 'capex non disponibile' : `${fmtPct(capexIntensity)} investimenti/fatturato`, tone: 'teal' },
+    { key: 'market', label: 'Motore mercato', value: marketEngine, detail: largeShare == null ? 'concentrazione non disponibile' : `${fmtPct(largeShare)} quota grandi`, tone: 'blue' },
+    { key: 'risk', label: 'Rischio operativo', value: operatingRisk[0], detail: operatingRisk.slice(1).join(' · ') || 'nessun rischio dominante emergente', tone: 'amber' },
+  ]
+
+  const companyNarrative = [
+    `Se fosse un'azienda, il suo motore sarebbe: ${revenueEngine}.`,
+    `La struttura dei costi è: ${costEngine}.`,
+    `Il modello di capitale è: ${capitalEngine}.`,
+    `Il campo competitivo è: ${marketEngine}.`,
+  ].join(' ')
+
+  return {
+    companyType,
+    narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario',
+    signals,
+    summary,
+    companyFrame,
+    diagnostics,
+    companyModel,
+    companyNarrative,
+  }
 }
 
 function MetricCard({ label, value, note }) {
@@ -436,6 +498,19 @@ export default function SectorLens({
         </div>
         <p className="focus-copy">{business.narrative}</p>
         <p className="focus-copy focus-summary">{business.summary}</p>
+        <div className="company-model">
+          <h4 className="company-model-title">Scomposizione aziendale</h4>
+          <p className="company-model-copy">{business.companyNarrative}</p>
+          <div className="company-model-grid">
+            {business.companyModel.map((item) => (
+              <div key={item.key} className={`company-model-card ${item.tone}`}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <em>{item.detail}</em>
+              </div>
+            ))}
+          </div>
+        </div>
         <ul className="business-diagnostics">
           {business.diagnostics.map((item) => <li key={item}>{item}</li>)}
         </ul>
