@@ -352,6 +352,34 @@ function comparePercentile(value, peers, getter) {
   }
 }
 
+function sumRevenue(rows) {
+  return rows.reduce((total, row) => total + (row.raw?.fatturato_keur || 0), 0)
+}
+
+function concentrationStats(rows, parentRevenue) {
+  const positive = rows
+    .map((row) => ({ row, revenue: row.raw?.fatturato_keur || 0 }))
+    .filter(({ revenue }) => revenue > 0)
+    .sort((left, right) => right.revenue - left.revenue)
+  if (!positive.length || !parentRevenue) return null
+  const shares = positive.map(({ revenue }) => revenue / parentRevenue)
+  const top1 = shares[0] ?? null
+  const top3 = shares.slice(0, 3).reduce((total, value) => total + value, 0)
+  const hhi = shares.reduce((total, value) => total + (value * value), 0)
+  const effectiveCount = hhi > 0 ? 1 / hhi : null
+  return { top1, top3, hhi, effectiveCount, count: positive.length }
+}
+
+function HierarchyCard({ label, value, note, tone = 'neutral' }) {
+  return (
+    <div className={`hier-card ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <em>{note}</em>
+    </div>
+  )
+}
+
 function PeerCard({ label, value, peer, note, tone = 'neutral' }) {
   const percentile = peer?.percentile
   const width = percentile == null ? 0 : Math.max(4, percentile * 100)
@@ -485,6 +513,14 @@ export default function SectorLens({
 
   const directRows = [...directChildren].sort((left, right) => (right.raw?.[sizeKey] || 0) - (left.raw?.[sizeKey] || 0))
   const leafRows = [...leafDescendants].sort((left, right) => (right.raw?.fatturato_keur || 0) - (left.raw?.fatturato_keur || 0))
+  const parentCrumb = lineage.length > 1 ? lineage[lineage.length - 2] : null
+  const directRevenue = sumRevenue(directRows)
+  const leafRevenue = sumRevenue(leafRows)
+  const directConcentration = concentrationStats(directRows, focus.raw?.fatturato_keur)
+  const leafConcentration = concentrationStats(leafRows, focus.raw?.fatturato_keur)
+  const siblingRows = peerGroup.filter((row) => row.code !== focus.code)
+  const siblingRevenue = sumRevenue(siblingRows)
+  const siblingContext = siblingRows.length ? concentrationStats(siblingRows, parentCrumb ? (parentCrumb.raw?.fatturato_keur || siblingRevenue + (focus.raw?.fatturato_keur || 0)) : siblingRevenue + (focus.raw?.fatturato_keur || 0)) : null
 
   return (
     <section className="focus">
@@ -503,6 +539,7 @@ export default function SectorLens({
         <div className="focus-tags">
           <span className="focus-chip">{formatShare(coverage / 100)} coverage</span>
           <span className="focus-chip">{formatShare(confidence / 100)} confidence</span>
+          <span className="focus-chip">{focus.level}</span>
           {buildTags(focus).slice(0, 4).map((tag) => <span key={tag} className="focus-chip">{tag}</span>)}
         </div>
       </div>
@@ -525,6 +562,50 @@ export default function SectorLens({
         <MetricCard label="Quota micro" value={fmtPct(microShare)} note="peso delle imprese <10 addetti" />
         <MetricCard label="Barriera" value={barrier == null ? '—' : fmtMoneyKeur(barrier)} note="investimenti per addetto" />
         <MetricCard label="Firma media" value={companyRevenue == null ? '—' : fmtMoneyKeur(companyRevenue)} note={`fatturato medio per impresa · ${fmtCount(focus.raw?.imprese) || '—'} imprese`} />
+      </div>
+
+      <div className="focus-block">
+        <h3 className="sec-title">Posizione gerarchica <InfoDot text="Legge il nodo rispetto ai livelli sopra e sotto: parent, sibling, figli immediati e foglie finali." /></h3>
+        <div className="hier-grid">
+          <HierarchyCard
+            label="Sopra"
+            value={parentCrumb ? parentCrumb.label : 'radice'}
+            note={parentCrumb ? `${parentCrumb.code} · livello superiore` : 'nessun parent: stai al livello più alto'}
+            tone="blue"
+          />
+          <HierarchyCard
+            label="Dentro"
+            value={`${childCount} sotto-nicchie`}
+            note={directRevenue ? `${fmtPct(directRevenue / (focus.raw?.fatturato_keur || 1))} del fatturato nei figli immediati` : 'nessun figlio disponibile'}
+            tone="teal"
+          />
+          <HierarchyCard
+            label="Foglie"
+            value={`${leafCount} classi finali`}
+            note={leafRevenue ? `${fmtPct(leafRevenue / (focus.raw?.fatturato_keur || 1))} del fatturato sotto la nicchia` : 'nessuna foglia disponibile'}
+            tone="amber"
+          />
+          <HierarchyCard
+            label="Sorelle"
+            value={`${siblingRows.length} pari`}
+            note={siblingContext ? `top1 pari ${fmtPct(siblingContext.top1)} · top3 ${fmtPct(siblingContext.top3)}` : 'niente confronto sorelle'}
+            tone="blue"
+          />
+        </div>
+        <div className="hier-grid">
+          <HierarchyCard
+            label="Concentrazione figli"
+            value={directConcentration ? `${fmtPct(directConcentration.top1)} top1` : 'n.d.'}
+            note={directConcentration ? `top3 ${fmtPct(directConcentration.top3)} · HHI proxy ${directConcentration.hhi.toFixed(3)}` : 'figli non abbastanza leggibili'}
+            tone={directConcentration && directConcentration.top1 >= 0.5 ? 'amber' : 'teal'}
+          />
+          <HierarchyCard
+            label="Concentrazione foglie"
+            value={leafConcentration ? `${fmtPct(leafConcentration.top1)} top1` : 'n.d.'}
+            note={leafConcentration ? `top3 ${fmtPct(leafConcentration.top3)} · foglie effettive ~ ${fmtRatio(leafConcentration.effectiveCount)}` : 'foglie non abbastanza leggibili'}
+            tone={leafConcentration && leafConcentration.top1 >= 0.5 ? 'amber' : 'teal'}
+          />
+        </div>
       </div>
 
       <div className="focus-block">
