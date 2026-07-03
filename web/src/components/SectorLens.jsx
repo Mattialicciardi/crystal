@@ -293,6 +293,53 @@ function buildArchetype(sector) {
     `Pressione esterna: ${marketBand || 'mercato non leggibile'} con ${largeShare == null ? 'quota grandi non disponibile' : `${fmtPct(largeShare)} grandi`}.`,
   ].join(' ')
 
+  const customerPressure = (() => {
+    if (margin == null && largeShare == null) return 'domanda non leggibile'
+    if (margin != null && margin >= 0.2 && largeShare != null && largeShare >= 0.5) return 'clienti forti / pricing difendibile'
+    if (margin != null && margin <= 0.08) return 'clienti forti / pricing debole'
+    if (largeShare != null && largeShare <= 0.2) return 'clienti più frammentati'
+    return 'clienti intermedi'
+  })()
+
+  const supplierPressure = (() => {
+    if (capexIntensity == null && payrollOnVa == null) return 'fornitori non leggibili'
+    if (capexIntensity != null && capexIntensity >= 0.08) return 'fornitori/capitale pesano'
+    if (payrollOnVa != null && payrollOnVa >= 0.7) return 'fornitori lavoro pesano'
+    if (capexIntensity != null && capexIntensity <= 0.03 && payrollOnVa != null && payrollOnVa <= 0.45) return 'fornitori leggeri'
+    return 'fornitori bilanciati'
+  })()
+
+  const dependencyModel = [
+    {
+      key: 'clients',
+      label: 'Clienti',
+      value: customerPressure,
+      detail: margin == null ? 'margine non disponibile' : `${fmtPct(margin)} MOL/fatturato`,
+      tone: margin != null && margin <= 0.08 ? 'amber' : 'blue',
+    },
+    {
+      key: 'suppliers',
+      label: 'Fornitori',
+      value: supplierPressure,
+      detail: capexIntensity == null ? 'capex non disponibile' : `${fmtPct(capexIntensity)} investimenti/fatturato`,
+      tone: capexIntensity != null && capexIntensity >= 0.08 ? 'teal' : 'amber',
+    },
+    {
+      key: 'switching',
+      label: 'Switching',
+      value: barrier == null ? 'n.d.' : barrier >= 100 ? 'alto' : barrier >= 50 ? 'medio' : 'basso',
+      detail: barrier == null ? 'barriera non disponibile' : `${fmtMoneyKeur(barrier)} per addetto`,
+      tone: barrier == null ? 'neutral' : barrier >= 100 ? 'blue' : barrier >= 50 ? 'teal' : 'amber',
+    },
+    {
+      key: 'pressure',
+      label: 'Pressione prezzo',
+      value: marginBand || 'n.d.',
+      detail: largeShare == null ? 'concentrazione non disponibile' : `${fmtPct(largeShare)} quota grandi`,
+      tone: margin == null ? 'neutral' : margin <= 0.08 ? 'amber' : 'teal',
+    },
+  ]
+
   return {
     companyType,
     narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario',
@@ -304,6 +351,7 @@ function buildArchetype(sector) {
     companyNarrative,
     valueChain,
     valueChainNarrative,
+    dependencyModel,
   }
 }
 
@@ -651,6 +699,19 @@ export default function SectorLens({
           <p className="company-model-copy">{business.valueChainNarrative}</p>
           <div className="company-model-grid">
             {business.valueChain.map((item) => (
+              <div key={item.key} className={`company-model-card ${item.tone}`}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <em>{item.detail}</em>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="value-chain">
+          <h4 className="company-model-title">Clienti e fornitori proxy</h4>
+          <p className="company-model-copy">Leggo la dipendenza esterna usando margine, concentrazione, barriera e intensità capitale: è una mappa di pressione, non un bilancio clienti/fornitori reale.</p>
+          <div className="company-model-grid">
+            {business.dependencyModel.map((item) => (
               <div key={item.key} className={`company-model-card ${item.tone}`}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
