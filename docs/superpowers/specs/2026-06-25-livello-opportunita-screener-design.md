@@ -1,4 +1,4 @@
-# Sfera — Livello opportunità: lo "Screener" — Design
+# Crystal — Livello opportunità: lo "Screener" — Design
 
 Data: 2026-06-25 · Stato: approvato (in attesa di review finale dello spec)
 

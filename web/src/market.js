@@ -1,4 +1,4 @@
-// Sfera — motore di calcolo del mercato (puro, testabile). Nessun import UI.
+// Crystal — motore di calcolo del mercato (puro, testabile). Nessun import UI.
 // I range sono oggetti { low, base, high }; le quote sono frazioni (0.05 = 5%).
 
 export function clamp(x, lo, hi) {

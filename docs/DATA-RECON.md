@@ -1,4 +1,4 @@
-# Sfera — Ricognizione del dato reale (verificata)
+# Crystal — Ricognizione del dato reale (verificata)
 
 > Questo documento registra ciò che è stato **verificato toccando le fonti**, distinguendolo
 > dalle assunzioni del PRD. È la base fattuale della pipeline. Coerente con la filosofia del
@@ -53,7 +53,7 @@ Chiave-tipo per un singolo indicatore, tutte le classi: `A.IT.<DATA_TYPE>..TOTAL
 ### Stato del dato leggibile nativamente (`CL_FLAG` / `OBS_STATUS`)
 Scoperta architetturale: **lo stato a 3 livelli del PRD è già nel dato.**
 
-| Flag ISTAT | Significato | Stato Sfera |
+| Flag ISTAT | Significato | Stato Crystal |
 |---|---|---|
 | (nessuno) | dato osservato | **osservato** (peso pieno) |
 | `e` | dato stimato | **stimato** (peso dimezzato) |

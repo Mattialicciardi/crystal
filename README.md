@@ -1,6 +1,6 @@
 # Crystal
 
-> *(ex Sfera)* — sfera di cristallo per market intelligence: dalla mappa settoriale dell'economia europea fino alle singole aziende.
+> *(Crystal)* — sfera di cristallo per market intelligence: dalla mappa settoriale dell'economia europea fino alle singole aziende.
 
 **Caratterizzatore settoriale dell'economia europea.** Ricostruisce la mappa strutturale di
 un'economia nazionale settore per settore e attacca a ciascuno un nucleo di metriche economiche
@@ -8,7 +8,7 @@ dure (dimensione, produttività, redditività, struttura, crescita). Esplorabile
 decomponibile + tabella** con **filtro paese** su tutta Europa, più una modalità **Confronta
 paesi** ("dove è più grande il mercato del settore X?").
 
-🔗 **Live:** https://mattialicciardi.github.io/sfera/
+🔗 **Live:** https://mattialicciardi.github.io/crystal/
 
 **Quattro modalità:** *Esplora paese* (treemap + tabella), *Confronta paesi* (un settore su tutta Europa),
 *Screener* (filtri → i settori che convengono: margine, concentrazione, trend, barriera),

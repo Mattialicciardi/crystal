@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sfera — costruisce i dataset per-paese dell'economia europea da Eurostat (sbs_sc_ovw).
+Crystal — costruisce i dataset per-paese dell'economia europea da Eurostat (sbs_sc_ovw).
 Granularità: 3 cifre NACE (gruppo). Schema identico a quello italiano (build.py) così
 il front-end è agnostico rispetto al paese. Nomi settore in italiano (riuso codelist ATECO).
 

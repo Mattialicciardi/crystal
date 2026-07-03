@@ -1,4 +1,4 @@
-// Sfera — helper di vista: scale colore, formattazione, accessor.
+// Crystal — helper di vista: scale colore, formattazione, accessor.
 
 // Viste di DIMENSIONE per la treemap (area = metrica additiva positiva). Colore = sempre Confidence.
 export const VIEWS = {

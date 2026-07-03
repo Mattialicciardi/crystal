@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sfera — fetch deterministico degli indicatori SBS ISTAT (Ateco 4 cifre).
+Crystal — fetch deterministico degli indicatori SBS ISTAT (Ateco 4 cifre).
 
 Fonte: dataflow IT1,161_267_DF_DCSP_SBSNAZ_2,1.0 (DSD DCSP_SBSNAZ).
 Una query per indicatore -> tutte le classi ATECO + tutta la gerarchia, tutti gli anni.
@@ -20,7 +20,7 @@ RAW.mkdir(parents=True, exist_ok=True)
 FLOW = "IT1,161_267_DF_DCSP_SBSNAZ_2,1.0"
 BASE = "https://esploradati.istat.it/SDMXWS/rest/data"
 ACCEPT = "application/vnd.sdmx.data+csv;version=1.0.0"
-UA = "Mozilla/5.0 (sfera-pipeline)"
+UA = "Mozilla/5.0 (crystal-pipeline)"
 START = "2015"
 SLEEP = 16  # margine sotto i 5/min
 

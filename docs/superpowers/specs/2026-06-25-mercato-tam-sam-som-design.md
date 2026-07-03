@@ -1,4 +1,4 @@
-# Sfera — Pagina "Mercato" (TAM/SAM/SOM) — Design
+# Crystal — Pagina "Mercato" (TAM/SAM/SOM) — Design
 
 Data: 2026-06-25 · Stato: approvato (in attesa di review finale dello spec)
 

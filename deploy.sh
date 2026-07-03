@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Sfera — build statica + deploy su GitHub Pages (branch gh-pages).
+# Crystal — build statica + deploy su GitHub Pages (branch gh-pages).
 # Usa il sectors.json già versionato in web/public (NON rigenera dai dati ISTAT:
 # per aggiornare i dati al nuovo rilascio ISTAT, lancia prima la pipeline —
 #   python3 pipeline/fetch_istat.py && python3 pipeline/build.py — poi committa).
 set -euo pipefail
 cd "$(dirname "$0")"
 
-REPO_SSH="git@github.com:Mattialicciardi/sfera.git"
+REPO_SSH="git@github.com:Mattialicciardi/crystal.git"
 
 echo "→ build statica"
 npm --prefix web install --no-audit --no-fund >/dev/null 2>&1 || true
@@ -23,4 +23,4 @@ rm -rf web/dist/.git
       commit -qm "deploy $(date -u +%Y-%m-%dT%H:%MZ)"
   git push -qf "$REPO_SSH" gh-pages
 )
-echo "✓ live: https://mattialicciardi.github.io/sfera/"
+echo "✓ live: https://mattialicciardi.github.io/crystal/"

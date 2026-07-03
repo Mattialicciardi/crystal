@@ -1,11 +1,11 @@
-# Sfera — Caratterizzatore Settoriale dell'Economia Italiana
+# Crystal — Caratterizzatore Settoriale dell'Economia Italiana
 
 > PRD sorgente del progetto. Le verifiche sul dato reale e le correzioni successive sono in
 > [`DATA-RECON.md`](DATA-RECON.md). Dove il PRD e la ricognizione divergono, vince la ricognizione.
 
 ## 1. Executive Summary
 
-Sfera è uno strumento di **caratterizzazione descrittiva** che ricostruisce la mappa strutturale di un'intera economia nazionale, partendo dall'Italia, scomponendola fino al livello di sotto-segmento (codice ATECO a 4 cifre, ~600–900 classi) e attaccando a ciascun segmento un nucleo di metriche economiche dure (dimensione, struttura, redditività, crescita, produttività, turnover, concentrazione) più due meta-metriche proprietarie — **Coverage Score** e **Confidence Score** — che dichiarano apertamente quanto la rappresentazione di ciascun settore sia completa e quanto sia osservata vs. stimata.
+Crystal è uno strumento di **caratterizzazione descrittiva** che ricostruisce la mappa strutturale di un'intera economia nazionale, partendo dall'Italia, scomponendola fino al livello di sotto-segmento (codice ATECO a 4 cifre, ~600–900 classi) e attaccando a ciascun segmento un nucleo di metriche economiche dure (dimensione, struttura, redditività, crescita, produttività, turnover, concentrazione) più due meta-metriche proprietarie — **Coverage Score** e **Confidence Score** — che dichiarano apertamente quanto la rappresentazione di ciascun settore sia completa e quanto sia osservata vs. stimata.
 
 L'utente target della v1 è **uno solo: il fondatore stesso**, un imprenditore in fase pre-idea che cerca non un mercato dove vendere una soluzione già pronta, ma la *mappa dei problemi e delle strutture* di un'economia per capire dove esistono asimmetrie attaccabili. Il prodotto non classifica i settori al posto dell'utente (nessun "punteggio di opportunità" imposto): fornisce una rappresentazione comparabile, esplorabile tramite una **treemap decomponibile + tabella**, dove l'utente applica le proprie lenti.
 
@@ -89,4 +89,4 @@ v1: nessun GTM (strumento personale). Porta aperta v2+: wedge cross-country via 
 
 ## 12. Raccomandazione finale
 
-Resistere a tre tentazioni: (a) il punteggio composito che reintroduce bias; (b) l'over-engineering da azienda 5–10 persone per un prodotto a 1 utente; (c) ritardare il contatto col dato reale. **La forza di Sfera non è sapere tutto di tutto — è dichiarare onestamente quanto sa.**
+Resistere a tre tentazioni: (a) il punteggio composito che reintroduce bias; (b) l'over-engineering da azienda 5–10 persone per un prodotto a 1 utente; (c) ritardare il contatto col dato reale. **La forza di Crystal non è sapere tutto di tutto — è dichiarare onestamente quanto sa.**

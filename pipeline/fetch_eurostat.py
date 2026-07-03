@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sfera — fetch SBS Eurostat (dataset sbs_sc_ovw) per TUTTI i paesi europei.
+Crystal — fetch SBS Eurostat (dataset sbs_sc_ovw) per TUTTI i paesi europei.
 Granularità NACE: fino a 3 cifre (gruppo) — Eurostat NON pubblica le 4 cifre.
 Una query per indicatore restituisce tutti i ~36 geo × tutte le voci NACE × tutti gli anni.
 Eurostat non ha il rate limit aggressivo di ISTAT; teniamo comunque un piccolo sleep.

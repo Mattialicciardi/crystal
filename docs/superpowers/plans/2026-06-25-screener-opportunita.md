@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Aggiungere a Sfera un livello "opportunità" come **screener a filtri** (no punteggio composito, no forecast), con 4 nuovi segnali (margine, concentrazione size-class, trend di crescita, barriera) e spiegazioni contestuali dei campi.
+**Goal:** Aggiungere a Crystal un livello "opportunità" come **screener a filtri** (no punteggio composito, no forecast), con 4 nuovi segnali (margine, concentrazione size-class, trend di crescita, barriera) e spiegazioni contestuali dei campi.
 
 **Architecture:** Estrarre i calcoli metrici in un modulo Python puro e testato (`pipeline/metrics.py`), usato sia da `build.py` (Italia 4 cifre) sia da `build_europe.py` (Europa 3 cifre). Aggiungere fetch della distribuzione per classe di addetti (Eurostat + ISTAT) per la concentrazione. Nel web: registro centrale delle metriche (`metrics.js`), componente `InfoDot`, e nuova modalità `Screener` con filtri range, ambito paese/Europa, risultati tabella, preset-scorciatoia.
 
@@ -42,7 +42,7 @@
 - [ ] **Step 1: Setup pytest**
 
 ```bash
-cd /Users/mattialicciardi/Desktop/Progetti/sfera
+cd /Users/mattialicciardi/Desktop/Progetti/crystal
 python3 -m venv .venv
 .venv/bin/pip install -q pytest
 mkdir -p tests
@@ -127,7 +127,7 @@ Expected: FAIL (ModuleNotFoundError: pipeline.metrics).
 - [ ] **Step 4: Implement** `pipeline/metrics.py`
 
 ```python
-"""Sfera — funzioni metriche pure e deterministiche (testate). Nessun I/O."""
+"""Crystal — funzioni metriche pure e deterministiche (testate). Nessun I/O."""
 
 
 def gross_margin(mol_keur, fatturato_keur):
@@ -236,7 +236,7 @@ Serve il fatturato per classe di addetti, per "grandi" (≥250) e "micro" (<10),
 - [ ] **Step 1: Implement** `pipeline/fetch_sizeclass.py`
 
 ```python
-"""Sfera — fetch distribuzione per classe di addetti (per la concentrazione).
+"""Crystal — fetch distribuzione per classe di addetti (per la concentrazione).
 Eurostat: NETTUR_MEUR per GE250 e 0-9 (1 query). ISTAT: 12110 con tutte le classi (1 query, rate-limit)."""
 import subprocess
 import pathlib
@@ -264,7 +264,7 @@ def fetch_istat_sizeclass():
     flow = "IT1,161_267_DF_DCSP_SBSNAZ_3,1.0"  # variante CON classe di addetti
     key = "A.IT.12110...9.9"  # PERS_EMPL_SIZE_CLASS non filtrato = tutte le classi
     url = f"https://esploradati.istat.it/SDMXWS/rest/data/{flow}/{key}?startPeriod=2015"
-    r = subprocess.run(["curl", "-sS", "-kL", "--compressed", "-A", "Mozilla/5.0 (sfera)",
+    r = subprocess.run(["curl", "-sS", "-kL", "--compressed", "-A", "Mozilla/5.0 (crystal)",
                         "-m", "240", "-H", "Accept: application/vnd.sdmx.data+csv;version=1.0.0",
                         "-o", str(out), "-w", "%{http_code} %{size_download}", url],
                        capture_output=True, text=True)

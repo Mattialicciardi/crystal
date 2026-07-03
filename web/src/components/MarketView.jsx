@@ -7,7 +7,8 @@ import { fmtMoneyKeur, fmtPct, fmtCount, fmtRatio } from '../lib.js'
 
 const BASE = import.meta.env.BASE_URL
 const DETAIL_IDS = ALL_METRIC_IDS  // stesse metriche di Esplora/Screener
-const STORE = 'sfera-mercato'
+const STORE = 'crystal-mercato'
+const LEGACY_STORE = 'sfera-mercato'
 const DEFAULTS = {
   prd: '', mode: 'compete', picked: [],
   spend: { low: 0.5, base: 1, high: 2 },   // % della spesa del settore-cliente
@@ -19,7 +20,10 @@ const toFrac = (r) => ({ low: r.low / 100, base: r.base / 100, high: r.high / 10
 const pct1 = (f) => +(f * 100).toFixed(1)
 
 function loadState() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE) || '{}') } }
+  try {
+    const raw = localStorage.getItem(STORE) || localStorage.getItem(LEGACY_STORE) || '{}'
+    return { ...DEFAULTS, ...JSON.parse(raw) }
+  }
   catch { return { ...DEFAULTS } }
 }
 

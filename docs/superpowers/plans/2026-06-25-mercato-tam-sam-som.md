@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Aggiungere a Sfera una 4ª modalità "Mercato" che, dato il prodotto/PRD e i settori scelti, calcola TAM/SAM/SOM (come range, con leva Competi-nel/Vendi-al) + arena competitiva + dettagli settore + cross-check europeo.
+**Goal:** Aggiungere a Crystal una 4ª modalità "Mercato" che, dato il prodotto/PRD e i settori scelti, calcola TAM/SAM/SOM (come range, con leva Competi-nel/Vendi-al) + arena competitiva + dettagli settore + cross-check europeo.
 
 **Architecture:** Motore di calcolo puro e testato (`web/src/market.js`, test con `node --test`), consumato da un componente `MarketView.jsx`. Tutto client-side, nessun nuovo fetch (riusa `countries/*.json` e `compare.json`), prodotto salvato in `localStorage`. SAM/SOM sono assunzioni dichiarate (range low/base/high); TAM è dato (o spesa stimata in modo Vendi-al).
 
@@ -88,13 +88,13 @@ test('computeMarket: esempio dello spec (100 x 0.3 x 0.05 -> SOM 1.5)', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd /Users/mattialicciardi/Desktop/Progetti/sfera && node --test web/test/market.test.js`
+Run: `cd /Users/mattialicciardi/Desktop/Progetti/crystal && node --test web/test/market.test.js`
 Expected: FAIL (Cannot find module ../src/market.js).
 
 - [ ] **Step 3: Implement** `web/src/market.js`
 
 ```javascript
-// Sfera — motore di calcolo del mercato (puro, testabile). Nessun import UI.
+// Crystal — motore di calcolo del mercato (puro, testabile). Nessun import UI.
 
 export function clamp(x, lo, hi) {
   return Math.max(lo, Math.min(hi, x))
@@ -136,7 +136,7 @@ export function computeMarket({ sumFatt, mode, spendRatio, addressable, capturab
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `cd /Users/mattialicciardi/Desktop/Progetti/sfera && node --test web/test/market.test.js`
+Run: `cd /Users/mattialicciardi/Desktop/Progetti/crystal && node --test web/test/market.test.js`
 Expected: PASS (7 test).
 
 - [ ] **Step 5: Commit**
@@ -159,7 +159,7 @@ git commit -m "feat(web): motore di calcolo Mercato (market.js) + test node"
 
 Comportamento:
 - Props: `data` (paese corrente), `country`, `countries`.
-- Stato (con `localStorage` chiave `sfera-mercato`): `prd` (testo), `mode` ('compete'|'sellinto'), `picked` (array di codici settore), `geo` (country code | 'EU'), `spend` `{low,base,high}` (frazioni, default 0.005/0.01/0.02), `addr` `{low,base,high}` (default 0.2/0.35/0.5), `capt` `{low,base,high}` (default 0.02/0.05/0.08), `anchor` (bool).
+- Stato (con `localStorage` chiave `crystal-mercato`): `prd` (testo), `mode` ('compete'|'sellinto'), `picked` (array di codici settore), `geo` (country code | 'EU'), `spend` `{low,base,high}` (frazioni, default 0.005/0.01/0.02), `addr` `{low,base,high}` (default 0.2/0.35/0.5), `capt` `{low,base,high}` (default 0.02/0.05/0.08), `anchor` (bool).
 - Settori disponibili: i settori-foglia di `data` (`s.level === data.meta.max_level`); selezione via input+datalist (come CometView) → chips dei selezionati.
 - `sumFatt` = somma `raw.fatturato_keur` dei settori selezionati (nel paese corrente; per geo='EU' vedi Task 4).
 - `qgWeighted` = `weighted(selezionati, s => s.concentrazione?.quota_grandi, s => s.raw.fatturato_keur)`.
@@ -167,7 +167,7 @@ Comportamento:
 - `market = computeMarket({ sumFatt, mode, spendRatio: mode==='sellinto'?toFrac(spend):null, addressable: toFrac(addr), capturable: toFrac(capt) })` dove i valori % nell'UI sono in percentuale (input "5" → 0.05): helper `toFrac`.
 - Output imbuto: tre livelli TAM / SAM / SOM, ognuno con `base` grande (formattato `fmtMoneyKeur`) e `low–high` sotto. Badge onestà (🟢 TAM compete / 🟡 sell-into e SAM/SOM).
 
-Persistenza: `useEffect(() => localStorage.setItem('sfera-mercato', JSON.stringify(state)), [state])`; init leggendo `localStorage`.
+Persistenza: `useEffect(() => localStorage.setItem('crystal-mercato', JSON.stringify(state)), [state])`; init leggendo `localStorage`.
 
 Usa `InfoDot` per spiegare TAM/SAM/SOM e le assunzioni; `METRICS`/`fmtMoneyKeur`/`fmtPct` da `lib.js`/`metrics.js`.
 
@@ -230,7 +230,7 @@ git commit -m "feat(web): Mercato — arena competitiva + dettagli settore + cro
 
 - [ ] **Step 1: Test JS + Python verdi**
 
-Run: `cd /Users/mattialicciardi/Desktop/Progetti/sfera && node --test web/test/ && .venv/bin/pytest tests/ -q`
+Run: `cd /Users/mattialicciardi/Desktop/Progetti/crystal && node --test web/test/ && .venv/bin/pytest tests/ -q`
 Expected: tutti PASS.
 
 - [ ] **Step 2: Verifica browser end-to-end**

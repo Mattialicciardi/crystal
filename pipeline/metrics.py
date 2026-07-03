@@ -1,4 +1,4 @@
-"""Sfera — funzioni metriche pure e deterministiche (testate). Nessun I/O."""
+"""Crystal — funzioni metriche pure e deterministiche (testate). Nessun I/O."""
 
 
 def gross_margin(mol_keur, fatturato_keur):

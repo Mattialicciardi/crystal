@@ -1,4 +1,4 @@
-// Sfera — matcher deterministico PRD -> settore (puro, testabile). Nessun LLM, nessuna chiave.
+// Crystal — matcher deterministico PRD -> settore (puro, testabile). Nessun LLM, nessuna chiave.
 // Strategia: tokenizza il PRD, espande con sinonimi verso i termini ATECO, e pesa per IDF
 // (un termine raro nei nomi dei settori pesa più di uno comune).
 

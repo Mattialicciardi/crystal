@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sfera — truth layer deterministico.
+Crystal — truth layer deterministico.
 
 Legge i CSV grezzi ISTAT (data/raw/istat_*.csv) + la DSD per l'albero ATECO,
 calcola gli 8 campi nucleo con stato {osservato, stimato, assente}, i campi
@@ -58,7 +58,7 @@ INDICATORS = {
     "E12110_STD": "fatt_std",
 }
 
-# mappa flag ISTAT -> stato Sfera
+# mappa flag ISTAT -> stato Crystal
 FLAG_STATE = {
     "": "osservato", "p": "osservato", "r": "osservato", "b": "osservato",
     "e": "stimato", "f": "stimato", "i": "stimato",
