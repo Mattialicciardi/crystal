@@ -11,6 +11,7 @@ REPO_SSH="git@github.com:Mattialicciardi/crystal.git"
 echo "→ build statica"
 npm --prefix web install --no-audit --no-fund >/dev/null 2>&1 || true
 npm --prefix web run build
+touch web/dist/.nojekyll
 
 echo "→ deploy su gh-pages"
 rm -rf web/dist/.git
