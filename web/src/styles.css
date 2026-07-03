@@ -153,6 +153,15 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .focus-k { color: var(--mut); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
 .focus-v { margin-top: 5px; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .focus-note { margin-top: 4px; color: #5e6b80; font-size: 11px; line-height: 1.35; }
+.focus-memo { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, #101724, #0d1320); }
+.focus-memo-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.focus-memo-head h3 { margin: 4px 0 0; font-size: 17px; letter-spacing: -0.2px; }
+.focus-memo-stats { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.focus-memo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+.focus-memo-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; }
+.focus-memo-card span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
+.focus-memo-card strong { display: block; margin-top: 5px; font-size: 14px; line-height: 1.25; }
+.focus-memo-card em { display: block; margin-top: 4px; color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
 .focus-block { margin-top: 14px; }
 .focus-copy { margin: 0 0 10px; color: var(--mut); font-size: 13px; line-height: 1.5; }
 .focus-summary { color: #94a3b8; }

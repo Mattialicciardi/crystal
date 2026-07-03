@@ -595,6 +595,19 @@ export default function SectorLens({
   const siblingRows = peerGroup.filter((row) => row.code !== focus.code)
   const siblingRevenue = sumRevenue(siblingRows)
   const siblingContext = siblingRows.length ? concentrationStats(siblingRows, parentCrumb ? (parentCrumb.raw?.fatturato_keur || siblingRevenue + (focus.raw?.fatturato_keur || 0)) : siblingRevenue + (focus.raw?.fatturato_keur || 0)) : null
+  const executiveMemo = [
+    companyWorkers == null ? 'scala non leggibile' : `${fmtRatio(companyWorkers)} addetti/impresa`,
+    productivity == null ? 'produttività non leggibile' : `${fmtMoneyKeur(productivity)} VA/addetto`,
+    margin == null ? 'margine non leggibile' : `${fmtPct(margin)} MOL/fatturato`,
+    largeShare == null ? 'concentrazione non leggibile' : `${fmtPct(largeShare)} quota grandi`,
+  ]
+  const executiveVerdict = (() => {
+    if (margin != null && margin <= 0.08 && largeShare != null && largeShare >= 0.5) return 'mercato duro: pricing stretto e potere concentrato'
+    if (productivity != null && productivity >= 150 && barrier != null && barrier >= 100) return 'nicchia di qualità: produttività e barriera sostengono il moat'
+    if (microShare != null && microShare >= 0.25) return 'coda lunga forte: frammentazione alta e consolidamento difficile'
+    if (capitalBand === 'capex-heavy') return 'capitale pesante: la scala conta più della quantità di operatori'
+    return 'profilo intermedio: leggere i dettagli per capire il vero driver'
+  })()
 
   return (
     <section className="focus">
@@ -636,6 +649,40 @@ export default function SectorLens({
         <MetricCard label="Quota micro" value={fmtPct(microShare)} note="peso delle imprese <10 addetti" />
         <MetricCard label="Barriera" value={barrier == null ? '—' : fmtMoneyKeur(barrier)} note="investimenti per addetto" />
         <MetricCard label="Firma media" value={companyRevenue == null ? '—' : fmtMoneyKeur(companyRevenue)} note={`fatturato medio per impresa · ${fmtCount(focus.raw?.imprese) || '—'} imprese`} />
+      </div>
+
+      <div className="focus-memo">
+        <div className="focus-memo-head">
+          <div>
+            <div className="focus-kicker">Executive memo</div>
+            <h3>{executiveVerdict}</h3>
+          </div>
+          <div className="focus-memo-stats">
+            {executiveMemo.map((item) => <span key={item} className="focus-chip">{item}</span>)}
+          </div>
+        </div>
+        <div className="focus-memo-grid">
+          <div className="focus-memo-card">
+            <span>Che tipo di azienda è</span>
+            <strong>{business.companyType}</strong>
+            <em>{business.companyNarrative}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Dove si difende</span>
+            <strong>{business.companyModel[0]?.value || '—'}</strong>
+            <em>{business.companyModel[0]?.detail || '—'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Dove soffre</span>
+            <strong>{business.dependencyModel[0]?.value || '—'}</strong>
+            <em>{business.dependencyModel[0]?.detail || '—'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Come leggerlo</span>
+            <strong>{focus.level} · {childCount} figli · {leafCount} foglie</strong>
+            <em>{parentCrumb ? `sotto ${parentCrumb.label}` : 'radice del settore'}</em>
+          </div>
+        </div>
       </div>
 
       <div className="focus-block">
