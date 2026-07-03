@@ -96,6 +96,43 @@ function buildArchetype(sector) {
   ])
   const labels = [structureBand, intensityBand, capitalBand, marketBand, marginBand, productivityBand].filter(Boolean)
   const companyType = labels.length ? labels.join(' · ') : 'profilo misto'
+  const signals = [
+    {
+      key: 'struttura',
+      label: 'Struttura',
+      value: structureBand || 'n.d.',
+      tone: workersPerFirm == null ? 'neutral' : workersPerFirm <= 10 ? 'teal' : 'blue',
+      detail: workersPerFirm == null ? 'addetti per impresa non disponibile' : `${fmtRatio(workersPerFirm)} addetti/impresa`,
+    },
+    {
+      key: 'capitale',
+      label: 'Capitale',
+      value: capitalBand || 'n.d.',
+      tone: capexIntensity == null ? 'neutral' : capexIntensity >= 0.08 ? 'amber' : 'teal',
+      detail: capexIntensity == null ? 'intensità investimenti non disponibile' : `${fmtPct(capexIntensity)} investimenti/fatturato`,
+    },
+    {
+      key: 'mercato',
+      label: 'Mercato',
+      value: marketBand || 'n.d.',
+      tone: largeShare == null ? 'neutral' : largeShare >= 0.5 ? 'blue' : 'teal',
+      detail: largeShare == null ? 'concentrazione non disponibile' : `${fmtPct(largeShare)} quota grandi`,
+    },
+    {
+      key: 'margine',
+      label: 'Margine',
+      value: marginBand || 'n.d.',
+      tone: margin == null ? 'neutral' : margin >= 0.2 ? 'teal' : 'amber',
+      detail: margin == null ? 'margine non disponibile' : `${fmtPct(margin)} MOL/fatturato`,
+    },
+    {
+      key: 'produttivita',
+      label: 'Produttività',
+      value: productivityBand || 'n.d.',
+      tone: productivity == null ? 'neutral' : productivity >= 150 ? 'teal' : 'amber',
+      detail: productivity == null ? 'produttività non disponibile' : `${fmtMoneyKeur(productivity)} VA/addetto`,
+    },
+  ]
   const narrativeParts = []
   if (workersPerFirm != null) narrativeParts.push(`${fmtRatio(workersPerFirm)} addetti per impresa`)
   if (revenuePerFirm != null) narrativeParts.push(`${fmtMoneyKeur(revenuePerFirm)} di ricavo medio per impresa`)
@@ -106,7 +143,13 @@ function buildArchetype(sector) {
   if (largeShare != null || microShare != null) {
     narrativeParts.push(`struttura mercato ${largeShare != null ? fmtPct(largeShare) : '—'} grandi / ${microShare != null ? fmtPct(microShare) : '—'} micro`)
   }
-  return { companyType, narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario' }
+  const summary = [
+    workersPerFirm != null ? `${fmtRatio(workersPerFirm)} addetti per impresa` : null,
+    revenuePerFirm != null ? `${fmtMoneyKeur(revenuePerFirm)} di ricavo medio` : null,
+    vaMargin != null ? `${fmtPct(vaMargin)} di VA su fatturato` : null,
+    payrollOnVa != null ? `${fmtPct(payrollOnVa)} di costo del personale sul VA` : null,
+  ].filter(Boolean).join(' · ')
+  return { companyType, narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario', signals, summary }
 }
 
 function MetricCard({ label, value, note }) {
@@ -241,7 +284,17 @@ export default function SectorLens({
         <div className="business-badge-row">
           <span className="focus-chip business-chip">{business.companyType}</span>
         </div>
+        <div className="business-grid">
+          {business.signals.map((signal) => (
+            <div key={signal.key} className={`business-signal ${signal.tone}`}>
+              <span>{signal.label}</span>
+              <strong>{signal.value}</strong>
+              <em>{signal.detail}</em>
+            </div>
+          ))}
+        </div>
         <p className="focus-copy">{business.narrative}</p>
+        <p className="focus-copy focus-summary">{business.summary}</p>
         <div className="company-stack">
           <div className="company-stack-head">
             <span>Su 100 di fatturato</span>
