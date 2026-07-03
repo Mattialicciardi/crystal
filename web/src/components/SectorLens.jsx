@@ -341,6 +341,30 @@ function buildArchetype(sector) {
     },
   ]
 
+  const dominantDriver = (() => {
+    if (productivity != null && productivity >= 150) return 'produttività alta'
+    if (largeShare != null && largeShare >= 0.5) return 'posizione di mercato forte'
+    if (margin != null && margin >= 0.2) return 'pricing e mix solidi'
+    if (capitalBand === 'capex-heavy') return 'intensità capitale'
+    if (intensityBand === 'labor-heavy') return 'intensità lavoro'
+    return 'driver misto'
+  })()
+
+  const mainConstraint = (() => {
+    if (margin != null && margin <= 0.08) return 'margine compresso'
+    if (microShare != null && microShare >= 0.25) return 'frammentazione elevata'
+    if (barrier != null && barrier >= 100) return 'barriera di ingresso alta'
+    if (payrollOnVa != null && payrollOnVa >= 0.7) return 'costo del personale pesante'
+    return 'vincolo non dominante'
+  })()
+
+  const nextCheck = (() => {
+    if (directRows.length > 0) return 'scendere nelle sotto-nicchie immediate'
+    if (leafRows.length > 0) return 'leggere le classi finali più pesanti'
+    if (siblingRows.length > 0) return 'confrontare le sorelle della nicchia'
+    return 'spostarsi sul parent per contesto'
+  })()
+
   return {
     companyType,
     narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario',
@@ -353,6 +377,9 @@ function buildArchetype(sector) {
     valueChain,
     valueChainNarrative,
     dependencyModel,
+    dominantDriver,
+    mainConstraint,
+    nextCheck,
   }
 }
 
@@ -681,6 +708,21 @@ export default function SectorLens({
             <span>Come leggerlo</span>
             <strong>{focus.level} · {childCount} figli · {leafCount} foglie</strong>
             <em>{parentCrumb ? `sotto ${parentCrumb.label}` : 'radice del settore'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Driver dominante</span>
+            <strong>{business.dominantDriver}</strong>
+            <em>{business.companyModel.find((item) => item.key === 'revenue')?.detail || '—'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Vincolo principale</span>
+            <strong>{business.mainConstraint}</strong>
+            <em>{business.dependencyModel.find((item) => item.key === 'pressure')?.detail || '—'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Prossimo check</span>
+            <strong>{business.nextCheck}</strong>
+            <em>{leafRows.length > 0 ? 'le foglie aiutano a validare il quadro' : 'serve più dettaglio a valle'}</em>
           </div>
         </div>
       </div>
