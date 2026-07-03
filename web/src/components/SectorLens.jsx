@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import InfoDot from './InfoDot.jsx'
 import { fmtCount, fmtMoneyKeur, fmtPct, fmtRatio } from '../lib.js'
 
@@ -428,6 +429,21 @@ function HierarchyCard({ label, value, note, tone = 'neutral' }) {
   )
 }
 
+function FocusSection({ id, title, subtitle, open, onToggle, children }) {
+  return (
+    <div className="focus-section">
+      <button className="focus-section-toggle" onClick={() => onToggle(id)}>
+        <span>
+          <strong>{title}</strong>
+          {subtitle && <em>{subtitle}</em>}
+        </span>
+        <i>{open ? '−' : '+'}</i>
+      </button>
+      {open && <div className="focus-section-body">{children}</div>}
+    </div>
+  )
+}
+
 function PeerCard({ label, value, peer, note, tone = 'neutral' }) {
   const percentile = peer?.percentile
   const width = percentile == null ? 0 : Math.max(4, percentile * 100)
@@ -468,6 +484,16 @@ export default function SectorLens({
   hasChildren,
 }) {
   if (!focus) return null
+  const [openSections, setOpenSections] = useState({
+    hierarchy: true,
+    archetype: true,
+    chain: true,
+    dependency: true,
+    peers: true,
+    operating: true,
+    leaves: false,
+  })
+  const toggleSection = (id) => setOpenSections((state) => ({ ...state, [id]: !state[id] }))
 
   const fatturato = focus.raw?.fatturato_keur ?? 0
   const companyRevenue = focus.raw?.imprese ? focus.raw.fatturato_keur / focus.raw.imprese : null
@@ -614,6 +640,13 @@ export default function SectorLens({
 
       <div className="focus-block">
         <h3 className="sec-title">Posizione gerarchica <InfoDot text="Legge il nodo rispetto ai livelli sopra e sotto: parent, sibling, figli immediati e foglie finali." /></h3>
+        <FocusSection
+          id="hierarchy"
+          title="Gerarchia"
+          subtitle="sopra, dentro, foglie e sorelle"
+          open={openSections.hierarchy}
+          onToggle={toggleSection}
+        >
         <div className="hier-grid">
           <HierarchyCard
             label="Sopra"
@@ -654,61 +687,81 @@ export default function SectorLens({
             tone={leafConcentration && leafConcentration.top1 >= 0.5 ? 'amber' : 'teal'}
           />
         </div>
+        </FocusSection>
       </div>
 
       <div className="focus-block">
         <h3 className="sec-title">Lente aziendale <InfoDot text="Non è una singola azienda reale: è una lettura operativa del settore come se fosse un'impresa media, usando i rapporti strutturali disponibili." /></h3>
-        <div className="business-badge-row">
-          <span className="focus-chip business-chip">{business.companyType}</span>
-        </div>
-        <div className="business-grid">
-          {business.signals.map((signal) => (
-            <div key={signal.key} className={`business-signal ${signal.tone}`}>
-              <span>{signal.label}</span>
-              <strong>{signal.value}</strong>
-              <em>{signal.detail}</em>
-            </div>
-          ))}
-        </div>
-        <div className="business-frame">
-          {business.companyFrame.map((item) => (
-            <div key={item.key} className={`business-frame-card ${item.tone}`}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-              <em>{item.detail}</em>
-            </div>
-          ))}
-        </div>
-        <p className="focus-copy">{business.narrative}</p>
-        <p className="focus-copy focus-summary">{business.summary}</p>
-        <div className="company-model">
-          <h4 className="company-model-title">Scomposizione aziendale</h4>
-          <p className="company-model-copy">{business.companyNarrative}</p>
-          <div className="company-model-grid">
-            {business.companyModel.map((item) => (
-              <div key={item.key} className={`company-model-card ${item.tone}`}>
+        <FocusSection
+          id="archetype"
+          title="Scomposizione aziendale"
+          subtitle="motore ricavi, costi, capitale, mercato"
+          open={openSections.archetype}
+          onToggle={toggleSection}
+        >
+          <div className="business-badge-row">
+            <span className="focus-chip business-chip">{business.companyType}</span>
+          </div>
+          <div className="business-grid">
+            {business.signals.map((signal) => (
+              <div key={signal.key} className={`business-signal ${signal.tone}`}>
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <em>{signal.detail}</em>
+              </div>
+            ))}
+          </div>
+          <div className="business-frame">
+            {business.companyFrame.map((item) => (
+              <div key={item.key} className={`business-frame-card ${item.tone}`}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
                 <em>{item.detail}</em>
               </div>
             ))}
           </div>
-        </div>
-        <div className="value-chain">
-          <h4 className="company-model-title">Catena del valore proxy</h4>
-          <p className="company-model-copy">{business.valueChainNarrative}</p>
-          <div className="company-model-grid">
-            {business.valueChain.map((item) => (
-              <div key={item.key} className={`company-model-card ${item.tone}`}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <em>{item.detail}</em>
-              </div>
-            ))}
+          <p className="focus-copy">{business.narrative}</p>
+          <p className="focus-copy focus-summary">{business.summary}</p>
+        </FocusSection>
+        <FocusSection
+          id="chain"
+          title="Catena del valore proxy"
+          subtitle="input, processo, uscita, pressione esterna"
+          open={openSections.chain}
+          onToggle={toggleSection}
+        >
+          <div className="company-model">
+            <p className="company-model-copy">{business.companyNarrative}</p>
+            <div className="company-model-grid">
+              {business.companyModel.map((item) => (
+                <div key={item.key} className={`company-model-card ${item.tone}`}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <em>{item.detail}</em>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="value-chain">
-          <h4 className="company-model-title">Clienti e fornitori proxy</h4>
+          <div className="value-chain">
+            <p className="company-model-copy">{business.valueChainNarrative}</p>
+            <div className="company-model-grid">
+              {business.valueChain.map((item) => (
+                <div key={item.key} className={`company-model-card ${item.tone}`}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <em>{item.detail}</em>
+                </div>
+              ))}
+            </div>
+          </div>
+        </FocusSection>
+        <FocusSection
+          id="dependency"
+          title="Clienti e fornitori proxy"
+          subtitle="dipendenza esterna e switching"
+          open={openSections.dependency}
+          onToggle={toggleSection}
+        >
           <p className="company-model-copy">Leggo la dipendenza esterna usando margine, concentrazione, barriera e intensità capitale: è una mappa di pressione, non un bilancio clienti/fornitori reale.</p>
           <div className="company-model-grid">
             {business.dependencyModel.map((item) => (
@@ -719,12 +772,14 @@ export default function SectorLens({
               </div>
             ))}
           </div>
-        </div>
-        <ul className="business-diagnostics">
-          {business.diagnostics.map((item) => <li key={item}>{item}</li>)}
-        </ul>
-        <div className="peer-section">
-          <h4 className="peer-title">Posizione rispetto ai pari</h4>
+        </FocusSection>
+        <FocusSection
+          id="peers"
+          title="Posizione rispetto ai pari"
+          subtitle="rank relativo nella nicchia sorella"
+          open={openSections.peers}
+          onToggle={toggleSection}
+        >
           <div className="peer-grid">
             {peerCards.map((card) => (
               <PeerCard
@@ -737,7 +792,10 @@ export default function SectorLens({
               />
             ))}
           </div>
-        </div>
+          <ul className="business-diagnostics">
+            {business.diagnostics.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </FocusSection>
         <div className="company-stack">
           <div className="company-stack-head">
             <span>Su 100 di fatturato</span>
@@ -846,6 +904,13 @@ export default function SectorLens({
       {leafRows.length > 0 && (
         <div className="focus-block">
           <h3 className="sec-title">Foglie più pesanti sotto questa nicchia <InfoDot text="Le classi finali che spiegano il massimo del fatturato sotto il nodo selezionato." /></h3>
+          <FocusSection
+            id="leaves"
+            title="Foglie pesanti"
+            subtitle="classi finali che spiegano il nodo"
+            open={openSections.leaves}
+            onToggle={toggleSection}
+          >
           <div className="focus-leaves">
             {leafRows.slice(0, 8).map((row) => {
               const share = fatturato ? ((row.raw?.fatturato_keur || 0) / fatturato) : null
@@ -858,6 +923,7 @@ export default function SectorLens({
               )
             })}
           </div>
+          </FocusSection>
         </div>
       )}
     </section>
