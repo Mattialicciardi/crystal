@@ -635,6 +635,28 @@ export default function SectorLens({
     if (capitalBand === 'capex-heavy') return 'capitale pesante: la scala conta più della quantità di operatori'
     return 'profilo intermedio: leggere i dettagli per capire il vero driver'
   })()
+  const avgDefined = (values) => {
+    const filtered = values.filter((value) => value != null && !Number.isNaN(value))
+    if (!filtered.length) return null
+    return filtered.reduce((total, value) => total + value, 0) / filtered.length
+  }
+  const scoreLabel = (score) => (score == null ? 'n.d.' : `${Math.round(score * 100)}/100`)
+  const depthScore = avgDefined([
+    companyWorkers == null ? null : clamp01(companyWorkers / 30),
+    productivity == null ? null : clamp01(productivity / 150),
+    leafCount === 0 ? null : clamp01(leafCount / 12),
+  ])
+  const pressureScore = avgDefined([
+    margin == null ? null : clamp01(1 - (margin / 0.2)),
+    microShare == null ? null : clamp01(microShare / 0.25),
+    largeShare == null ? null : clamp01(largeShare / 0.5),
+    capitalBand == null ? null : (capitalBand === 'capex-heavy' ? 1 : capitalBand === 'capex moderato' ? 0.55 : 0.2),
+  ])
+  const defensibilityScore = avgDefined([
+    barrier == null ? null : clamp01(barrier / 100),
+    margin == null ? null : clamp01(margin / 0.2),
+    largeShare == null ? null : clamp01(largeShare / 0.5),
+  ])
 
   return (
     <section className="focus">
@@ -723,6 +745,21 @@ export default function SectorLens({
             <span>Prossimo check</span>
             <strong>{business.nextCheck}</strong>
             <em>{leafRows.length > 0 ? 'le foglie aiutano a validare il quadro' : 'serve più dettaglio a valle'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Profondità operativa</span>
+            <strong>{scoreLabel(depthScore)}</strong>
+            <em>{leafCount > 0 ? 'misura scala, produttività e ramificazioni della nicchia' : 'assenza di foglie limita la lettura'}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Pressione competitiva</span>
+            <strong>{scoreLabel(pressureScore)}</strong>
+            <em>{business.mainConstraint}</em>
+          </div>
+          <div className="focus-memo-card">
+            <span>Difendibilità</span>
+            <strong>{scoreLabel(defensibilityScore)}</strong>
+            <em>{business.dominantDriver}</em>
           </div>
         </div>
       </div>
