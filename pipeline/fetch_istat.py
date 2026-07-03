@@ -50,7 +50,7 @@ def fetch(dt: str, name: str) -> str:
     key = f"A.IT.{dt}..TOTAL.9.9"
     url = f"{BASE}/{FLOW}/{key}?startPeriod={START}"
     cmd = [
-        "curl", "-sS", "-kL", "--compressed", "-A", UA, "-m", "240",
+        "curl", "-sS", "-L", "--compressed", "-A", UA, "-m", "240",
         "-H", f"Accept: {ACCEPT}",
         "-o", str(out),
         "-w", "%{http_code} %{size_download}",

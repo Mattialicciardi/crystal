@@ -216,8 +216,8 @@ def build():
             }
 
     for geo in sorted(geo_nace):
-        if geo == "IT" or geo in EXCLUDED_GEOS:
-            continue  # Italia = ISTAT 4 cifre (build.py); esclusi i candidati extra-UE
+        if geo == "IT" or geo in EXCLUDED_GEOS or geo not in COUNTRY_NAMES:
+            continue  # Italia = ISTAT 4 cifre (build.py); esclusi i candidati extra-UE / non mappati
         sectors = []
         latest_year = 0
         for nace in sorted(geo_nace[geo]):

@@ -34,7 +34,7 @@ def fetch_istat_class(size_code, name):
     flow = "IT1,161_267_DF_DCSP_SBSNAZ_3,1.0"
     key = f"A.IT.12110..{size_code}.9.9"
     url = f"https://esploradati.istat.it/SDMXWS/rest/data/{flow}/{key}?startPeriod=2015"
-    r = subprocess.run(["curl", "-sS", "-kL", "--compressed", "-A", "Mozilla/5.0 (crystal)",
+    r = subprocess.run(["curl", "-sS", "-L", "--compressed", "-A", "Mozilla/5.0 (crystal)",
                         "-m", "240", "-H", "Accept: application/vnd.sdmx.data+csv;version=1.0.0",
                         "-o", str(out), "-w", "%{http_code} %{size_download}", url],
                        capture_output=True, text=True)
