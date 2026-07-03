@@ -669,6 +669,28 @@ export default function SectorLens({
       barrier,
     ].filter((value) => value != null && !Number.isNaN(value)).length / 6),
   ])
+  const observedSignals = [
+    companyWorkers != null && 'scala',
+    productivity != null && 'produttività',
+    margin != null && 'margine',
+    largeShare != null && 'quota grandi',
+    microShare != null && 'quota micro',
+    barrier != null && 'barriera',
+    directRows.length > 0 && 'sotto-nicchie',
+    leafRows.length > 0 && 'foglie',
+    peerGroup.length > 1 && 'pari',
+  ].filter(Boolean)
+  const missingSignals = [
+    companyWorkers == null && 'scala',
+    productivity == null && 'produttività',
+    margin == null && 'margine',
+    largeShare == null && 'quota grandi',
+    microShare == null && 'quota micro',
+    barrier == null && 'barriera',
+    directRows.length === 0 && 'sotto-nicchie',
+    leafRows.length === 0 && 'foglie',
+    peerGroup.length <= 1 && 'pari',
+  ].filter(Boolean)
 
   return (
     <section className="focus">
@@ -777,6 +799,20 @@ export default function SectorLens({
             <span>Adeguatezza dati</span>
             <strong>{scoreLabel(dataAdequacyScore)}</strong>
             <em>{coverage == null ? 'coverage non disponibile' : `${formatShare(coverage / 100)} coverage · ${formatShare(confidence / 100)} confidence`}</em>
+          </div>
+        </div>
+        <div className="focus-audit">
+          <div className="focus-audit-col">
+            <span>Segnali osservati</span>
+            <div className="focus-chip-row">
+              {observedSignals.map((item) => <span key={item} className="focus-chip">{item}</span>)}
+            </div>
+          </div>
+          <div className="focus-audit-col">
+            <span>Segnali mancanti</span>
+            <div className="focus-chip-row">
+              {missingSignals.length ? missingSignals.map((item) => <span key={item} className="focus-chip muted">{item}</span>) : <span className="focus-chip">nessuno</span>}
+            </div>
           </div>
         </div>
       </div>
