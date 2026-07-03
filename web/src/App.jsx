@@ -3,11 +3,12 @@ import Treemap from './components/Treemap.jsx'
 import CompareView from './components/CompareView.jsx'
 import ScreenerView from './components/ScreenerView.jsx'
 import MarketView from './components/MarketView.jsx'
+import SectorLens from './components/SectorLens.jsx'
 import InfoDot from './components/InfoDot.jsx'
 import Legend from './components/Legend.jsx'
 import { METRICS, ALL_METRIC_IDS } from './metrics.js'
 import {
-  VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor,
+  VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor, fmtMoneyKeur, fmtCount,
 } from './lib.js'
 
 const BASE = import.meta.env.BASE_URL
@@ -65,6 +66,18 @@ export default function App() {
     return { index, childrenOf }
   }, [data])
 
+  const collectLeafDescendants = (code) => {
+    const leaves = []
+    const stack = [...(childrenOf.get(code) || [])]
+    while (stack.length) {
+      const sector = stack.pop()
+      const children = childrenOf.get(sector.code) || []
+      if (children.length) stack.push(...children)
+      else leaves.push(sector)
+    }
+    return leaves
+  }
+
   if (err) return <div className="screen err">Errore nel caricamento dati: {err}</div>
   if (!countries || !data) return <div className="screen">Carico l'economia…</div>
 
@@ -83,6 +96,9 @@ export default function App() {
   const m = data.meta
   const srcShort = (m.source || '').includes('ISTAT') ? 'ISTAT' : 'Eurostat'
   const granLabel = m.max_level === 'class' ? '4 cifre ATECO' : '3 cifre NACE'
+  const focus = currentCode ? index.get(currentCode) : null
+  const focusChildren = currentCode ? (childrenOf.get(currentCode) || []) : (childrenOf.get('__root__') || [])
+  const focusLeaves = currentCode ? collectLeafDescendants(currentCode) : []
 
   const applyPreset = (p) => { setPreset(p.id); setSizeKey(p.size); setSort({ key: p.sort, dir: p.dir }) }
   const drill = (code) => setPath([...path, code])
@@ -143,6 +159,20 @@ export default function App() {
           ))}
         </div>
       </div>
+
+      {mode === 'explore' && focus && (
+        <SectorLens
+          focus={focus}
+          lineage={crumbs}
+          directChildren={focusChildren}
+          leafDescendants={focusLeaves}
+          sizeKey={view.sizeKey}
+          sizeLabel={view.label}
+          sizeFmt={(value) => (view.kind === 'money' ? fmtMoneyKeur(value) : fmtCount(value))}
+          onDrill={drill}
+          hasChildren={(code) => (childrenOf.get(code) || []).length > 0}
+        />
+      )}
 
       <Treemap items={items} sizeKey={view.sizeKey} viewKind={view.kind} onDrill={drill} hasChildren={(code) => (childrenOf.get(code) || []).length > 0} />
 

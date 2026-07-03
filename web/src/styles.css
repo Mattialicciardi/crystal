@@ -139,6 +139,34 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .th-sort { cursor: pointer; }
 .grid-wrap { overflow-x: auto; }
 
+/* focus drilldown */
+.focus { margin: 14px 0 18px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, #111724, #0c1018); box-shadow: 0 12px 28px rgba(0, 0, 0, .18); }
+.focus-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+.focus-kicker { color: var(--teal); text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 700; }
+.focus h2 { margin: 4px 0 6px; font-size: 22px; letter-spacing: -0.3px; }
+.focus-meta { display: flex; flex-wrap: wrap; gap: 7px; color: var(--mut); font-size: 12px; }
+.focus-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.focus-chip { background: #142030; border: 1px solid #243145; color: var(--txt); border-radius: 999px; padding: 4px 9px; font-size: 11.5px; }
+.focus-lineage { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 12px 0 14px; }
+.focus-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.focus-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; }
+.focus-k { color: var(--mut); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+.focus-v { margin-top: 5px; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.focus-note { margin-top: 4px; color: #5e6b80; font-size: 11px; line-height: 1.35; }
+.focus-block { margin-top: 14px; }
+.focus-copy { margin: 0 0 10px; color: var(--mut); font-size: 13px; line-height: 1.5; }
+.focus-mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.focus-mini { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; }
+.focus-mini span { display: block; color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
+.focus-mini strong { display: block; margin-top: 5px; font-size: 17px; }
+.focus-table thead th { background: transparent; }
+.focus-leaves { display: flex; flex-wrap: wrap; gap: 8px; }
+.leaf-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--txt); border-radius: 999px; padding: 7px 11px; cursor: pointer; font-size: 12px; }
+.leaf-chip:hover { border-color: var(--teal); }
+.leaf-code { color: var(--mut); font-variant-numeric: tabular-nums; }
+.leaf-name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leaf-share { color: var(--teal); font-variant-numeric: tabular-nums; }
+
 /* Mercato */
 .market { margin-top: 6px; }
 .market-prd { width: 100%; min-height: 64px; background: var(--panel); border: 1px solid var(--line); color: var(--txt); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-family: inherit; resize: vertical; margin-bottom: 14px; }
