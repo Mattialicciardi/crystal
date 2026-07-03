@@ -149,7 +149,46 @@ function buildArchetype(sector) {
     vaMargin != null ? `${fmtPct(vaMargin)} di VA su fatturato` : null,
     payrollOnVa != null ? `${fmtPct(payrollOnVa)} di costo del personale sul VA` : null,
   ].filter(Boolean).join(' · ')
-  return { companyType, narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario', signals, summary }
+  const companyFrame = [
+    {
+      key: 'scale',
+      label: 'Scala',
+      value: workersPerFirm == null ? 'n.d.' : `${fmtRatio(workersPerFirm)} addetti/impresa`,
+      detail: revenuePerFirm == null ? 'ricavo medio non disponibile' : `${fmtMoneyKeur(revenuePerFirm)} di ricavo medio`,
+      tone: workersPerFirm == null ? 'neutral' : workersPerFirm >= 30 ? 'blue' : workersPerFirm >= 10 ? 'teal' : 'amber',
+    },
+    {
+      key: 'costi',
+      label: 'Costi',
+      value: payrollOnVa == null ? 'n.d.' : `${fmtPct(payrollOnVa)} del VA`,
+      detail: capexIntensity == null ? 'capex non disponibile' : `${fmtPct(capexIntensity)} investimenti/fatturato`,
+      tone: payrollOnVa == null ? 'neutral' : payrollOnVa >= 0.7 ? 'amber' : 'teal',
+    },
+    {
+      key: 'potere',
+      label: 'Potere mercato',
+      value: marketBand || 'n.d.',
+      detail: largeShare == null ? 'concentrazione non disponibile' : `${fmtPct(largeShare)} quota grandi`,
+      tone: largeShare == null ? 'neutral' : largeShare >= 0.5 ? 'blue' : 'teal',
+    },
+    {
+      key: 'moat',
+      label: 'Barriera',
+      value: barrier == null ? 'n.d.' : fmtMoneyKeur(barrier),
+      detail: barrier == null ? 'barriera non disponibile' : 'investimenti per addetto',
+      tone: barrier == null ? 'neutral' : barrier >= 100 ? 'blue' : barrier >= 50 ? 'teal' : 'amber',
+    },
+  ]
+  const diagnostics = []
+  if (companyType !== 'profilo misto') diagnostics.push(`profilo: ${companyType}`)
+  if (margin != null && margin <= 0.08) diagnostics.push('margine stretto: il pricing è sotto pressione')
+  if (capitalBand === 'capex-heavy') diagnostics.push('capitale pesante: la scala conta più della frammentazione')
+  if (intensityBand === 'labor-heavy') diagnostics.push('modello lavoro-intensivo: il costo del personale pesa sul VA')
+  if (largeShare != null && largeShare >= 0.5) diagnostics.push('mercato concentrato: pochi player dominano il fatturato')
+  if (microShare != null && microShare >= 0.25) diagnostics.push('coda lunga: molti piccoli attori restano rilevanti')
+  if (barrier != null && barrier >= 100) diagnostics.push('barriera d’ingresso alta: serve capitale per stare sul mercato')
+  if (!diagnostics.length) diagnostics.push('profilo ancora ibrido: leggere il nodo con le sotto-nicchie immediate')
+  return { companyType, narrative: narrativeParts.join(' · ') || 'profilo ancora frammentario', signals, summary, companyFrame, diagnostics }
 }
 
 function MetricCard({ label, value, note }) {
@@ -293,8 +332,20 @@ export default function SectorLens({
             </div>
           ))}
         </div>
+        <div className="business-frame">
+          {business.companyFrame.map((item) => (
+            <div key={item.key} className={`business-frame-card ${item.tone}`}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <em>{item.detail}</em>
+            </div>
+          ))}
+        </div>
         <p className="focus-copy">{business.narrative}</p>
         <p className="focus-copy focus-summary">{business.summary}</p>
+        <ul className="business-diagnostics">
+          {business.diagnostics.map((item) => <li key={item}>{item}</li>)}
+        </ul>
         <div className="company-stack">
           <div className="company-stack-head">
             <span>Su 100 di fatturato</span>
