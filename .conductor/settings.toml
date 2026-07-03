@@ -1,0 +1,15 @@
+#:schema https://conductor.build/schemas/settings.repo.schema.json
+
+[scripts]
+setup = "npm --prefix web install"
+run_mode = "concurrent"
+archive = "rm -rf web/node_modules/.vite"
+
+[scripts.run.dev]
+command = "npm --prefix web run dev -- --port $CONDUCTOR_PORT"
+default = true
+icon = "play"
+
+[scripts.run.test]
+command = "node --test web/test/*.test.js"
+icon = "test-tube"

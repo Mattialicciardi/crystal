@@ -200,12 +200,12 @@ export default function MarketView({ data }) {
       {selected.length > 0 && (
         <div className="arena">
           <h3 className="sec-title">Arena competitiva<InfoDot text="La struttura competitiva del settore dai nostri dati aggregati (niente aziende reali nominate)." /></h3>
-          <div className="arena-grid">
-            <div className="arena-card"><div className="arena-k">Quota grandi (≥250 add.)</div><div className="arena-v">{qg == null ? '—' : fmtPct(qg)}</div></div>
-            <div className="arena-card"><div className="arena-k">Quota micro (&lt;10 add.)</div><div className="arena-v">{qm == null ? '—' : fmtPct(qm)}</div></div>
-            <div className="arena-card"><div className="arena-k">Addetti / impresa</div><div className="arena-v">{addPerFirm == null ? '—' : fmtRatio(addPerFirm)}</div></div>
-            <div className="arena-card"><div className="arena-k">N° imprese</div><div className="arena-v">{fmtCount(nImprese)}</div></div>
-            <div className="arena-card"><div className="arena-k">Player tipo<InfoDot text="Fatturato medio per impresa = fatturato del settore / numero imprese. Media sintetica, NON un'azienda reale." /></div><div className="arena-v">{playerTipo == null ? '—' : fmtMoneyKeur(playerTipo)}</div></div>
+          <div className="stat-grid stat-grid--narrow">
+            <div className="stat-card"><div className="arena-k">Quota grandi (≥250 add.)</div><div className="arena-v">{qg == null ? '—' : fmtPct(qg)}</div></div>
+            <div className="stat-card"><div className="arena-k">Quota micro (&lt;10 add.)</div><div className="arena-v">{qm == null ? '—' : fmtPct(qm)}</div></div>
+            <div className="stat-card"><div className="arena-k">Addetti / impresa</div><div className="arena-v">{addPerFirm == null ? '—' : fmtRatio(addPerFirm)}</div></div>
+            <div className="stat-card"><div className="arena-k">N° imprese</div><div className="arena-v">{fmtCount(nImprese)}</div></div>
+            <div className="stat-card"><div className="arena-k">Player tipo<InfoDot text="Fatturato medio per impresa = fatturato del settore / numero imprese. Media sintetica, NON un'azienda reale." /></div><div className="arena-v">{playerTipo == null ? '—' : fmtMoneyKeur(playerTipo)}</div></div>
           </div>
         </div>
       )}
