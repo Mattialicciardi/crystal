@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import InfoDot from './InfoDot.jsx'
+import CompanyPanel from './CompanyPanel.jsx'
 import { fmtCount, fmtMoneyKeur, fmtPct, fmtRatio } from '../lib.js'
 
 function formatShare(value) {
@@ -512,6 +513,7 @@ export default function SectorLens({
   sizeFmt,
   hasChildren,
   onNavigate,
+  country,
 }) {
   if (!focus) return null
   const [openSections, setOpenSections] = useState({
@@ -720,7 +722,7 @@ export default function SectorLens({
 
       <div className="focus-lineage">
         {lineage.map((item, index) => (
-          <span key={item.code}>
+          <span key={item.i ?? index}>
             {index > 0 && <span className="sep">▸</span>}
             <button className={'crumb' + (index === lineage.length - 1 ? ' here' : '')} onClick={() => onNavigate ? onNavigate(item.i) : null}>{item.label}</button>
           </span>
@@ -1109,6 +1111,14 @@ export default function SectorLens({
           </FocusSection>
         </div>
       )}
+
+      <CompanyPanel
+        country={country}
+        focus={focus}
+        leafDescendants={leafDescendants}
+        onDrill={onDrill}
+        hasChildren={hasChildren}
+      />
     </section>
   )
 }

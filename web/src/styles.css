@@ -741,3 +741,43 @@ html, body, #root {
     display: none;
   }
 }
+
+/* ---- Company panel (drill-down azienda) ---- */
+.co-block { margin-top: 24px; }
+.co-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 24px 0 8px; }
+.co-head-tags { display: flex; gap: 6px; }
+.co-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 8px; }
+.co-search {
+  flex: 0 0 260px; max-width: 100%; background: var(--bg); border: 1px solid var(--line);
+  color: var(--txt); border-radius: 8px; padding: 7px 10px; font-size: 12.5px;
+}
+.co-search:focus { outline: none; border-color: var(--teal); }
+.co-count { color: var(--mut); font-size: 12px; }
+.co-ref { margin-left: auto; color: var(--mut); font-size: 12px; }
+.co-table td.l strong { font-weight: 600; }
+.co-form { color: var(--mut); font-style: normal; font-size: 11.5px; }
+.co-place { color: var(--mut); }
+.co-prod { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.co-bar { display: block; height: 3px; background: var(--teal); border-radius: 2px; opacity: .8; }
+td.co-hi { color: var(--teal); }
+td.co-lo { color: #e0a34a; }
+.co-contacts a { color: var(--accent); text-decoration: none; }
+.co-contacts a:hover { text-decoration: underline; }
+.co-pec { color: var(--mut); font-size: 11px; }
+.co-more {
+  margin-top: 8px; background: var(--bg); border: 1px solid var(--line); color: var(--txt);
+  border-radius: 8px; padding: 7px 12px; font-size: 12.5px; cursor: pointer;
+}
+.co-more:hover { border-color: var(--teal); }
+.co-rollup { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.co-rollup-item {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--txt);
+  font-size: 12px;
+}
+.co-rollup-item.drillable { cursor: pointer; }
+.co-rollup-item.drillable:hover { border-color: var(--teal); }
+.co-rollup-item[disabled] { opacity: .7; cursor: default; }
+.co-rollup-name { color: var(--mut); }
+.co-rollup-item strong { color: var(--teal); }
+.co-source { color: var(--mut); font-size: 11px; margin-top: 10px; }

@@ -1,0 +1,37 @@
+ateco,name,comune,provincia,regione,forma_giuridica,stato,anno,fatturato_keur,addetti,va_keur,mol_keur,pec,website
+6201,Byteforge Software Srl,Milano,MI,Lombardia,SRL,attiva,2023,18400,120,9200,2100,byteforge@pec.it,byteforge.example.it
+6201,Aurora Digital SpA,Torino,TO,Piemonte,SPA,attiva,2023,42500,260,19800,4600,auroradigital@pec.it,auroradigital.example.it
+6201,Nimbus Labs Srl,Bologna,BO,Emilia-Romagna,SRL,attiva,2023,7300,52,3900,720,nimbuslabs@pec.it,nimbuslabs.example.it
+6201,Codemill Italia Srl,Roma,RM,Lazio,SRL,attiva,2023,12600,88,6100,1150,codemill@pec.it,codemill.example.it
+6201,Fenice Systems Srl,Napoli,NA,Campania,SRL,attiva,2023,3100,24,1500,240,fenicesystems@pec.it,
+6201,Delta Software Srl,Padova,PD,Veneto,SRL,attiva,2023,9800,66,4700,910,deltasoftware@pec.it,deltasoftware.example.it
+6201,Quantum Apps Srl,Firenze,FI,Toscana,SRL,attiva,2023,5400,38,2600,410,quantumapps@pec.it,
+6201,Kernel Studio Srl,Bari,BA,Puglia,SRL,attiva,2023,2200,17,1050,150,kernelstudio@pec.it,
+6201,Vela Cloud SpA,Milano,MI,Lombardia,SPA,attiva,2023,61000,340,28500,7200,velacloud@pec.it,velacloud.example.it
+6201,Rete Verde Software Srl,Trento,TN,Trentino-Alto Adige,SRL,attiva,2023,4100,29,2000,320,reteverde@pec.it,
+5610,Trattoria del Borgo Srl,Bologna,BO,Emilia-Romagna,SRL,attiva,2023,1250,22,540,110,trattoriaborgo@pec.it,
+5610,Osteria Marina Srl,Genova,GE,Liguria,SRL,attiva,2023,980,16,410,72,osteriamarina@pec.it,
+5610,Ristorante Aurora SpA,Milano,MI,Lombardia,SPA,attiva,2023,5600,74,2300,480,ristoranteaurora@pec.it,ristoranteaurora.example.it
+5610,Pizzeria Napoli Verace Srl,Napoli,NA,Campania,SRL,attiva,2023,720,14,300,58,pizzerianapoli@pec.it,
+5610,La Tavola Toscana Srl,Firenze,FI,Toscana,SRL,attiva,2023,1420,24,610,120,tavolatoscana@pec.it,
+5610,Sapori di Sicilia Srl,Palermo,PA,Sicilia,SRL,attiva,2023,860,15,360,66,saporisicilia@pec.it,
+5610,Braceria Centrale Srl,Roma,RM,Lazio,SRL,attiva,2023,2100,31,880,175,braceriacentrale@pec.it,
+5610,Bistrot Lago Srl,Como,CO,Lombardia,SRL,attiva,2023,1100,18,470,95,bistrotlago@pec.it,
+5610,Cucina Adriatica Srl,Pescara,PE,Abruzzo,SRL,attiva,2023,640,12,270,50,cucinaadriatica@pec.it,
+5610,Ristoro Alpino Srl,Bolzano,BZ,Trentino-Alto Adige,SRL,attiva,2023,1330,21,560,112,ristoroalpino@pec.it,
+5610,Piazza Grande Ristoranti SpA,Torino,TO,Piemonte,SPA,attiva,2023,7800,96,3200,690,piazzagrande@pec.it,piazzagrande.example.it
+5610,Locanda del Sole Srl,Lecce,LE,Puglia,SRL,attiva,2023,590,11,250,46,locandasole@pec.it,
+5610,Trattoria Vecchia Srl,Verona,VR,Veneto,SRL,attiva,2023,1010,17,430,86,trattoriavecchia@pec.it,
+5610,Gusto Urbano Srl,Milano,MI,Lombardia,SRL,attiva,2023,3400,44,1400,290,gustourbano@pec.it,gustourbano.example.it
+5610,Cascina Ristoro Srl,Cuneo,CN,Piemonte,SRL,cessata,2022,410,8,170,28,cascinaristoro@pec.it,
+1105,Birrificio Alpino SpA,Udine,UD,Friuli-Venezia Giulia,SPA,attiva,2023,14200,110,6800,1900,birrificioalpino@pec.it,birrificioalpino.example.it
+1105,Birra del Borgo Nuovo Srl,Rieti,RI,Lazio,SRL,attiva,2023,8600,72,4100,1050,birradelborgonuovo@pec.it,
+1105,Fabbrica Birraria Adriatica Srl,Ancona,AN,Marche,SRL,attiva,2023,5100,48,2400,560,birrariaadriatica@pec.it,
+1105,Birrificio Etneo Srl,Catania,CT,Sicilia,SRL,attiva,2023,2300,26,1080,210,birrificioetneo@pec.it,
+1105,Bionda Padana SpA,Cremona,CR,Lombardia,SPA,attiva,2023,26800,180,12900,3600,biondapadana@pec.it,biondapadana.example.it
+1105,Birra Artigiana Sarda Srl,Cagliari,CA,Sardegna,SRL,attiva,2023,1400,18,660,120,birrasarda@pec.it,
+1052,Gelateria Industriale Dolce Srl,Parma,PR,Emilia-Romagna,SRL,attiva,2023,9400,84,4300,980,dolcegelati@pec.it,dolcegelati.example.it
+1052,Freddo Artigiano SpA,Verona,VR,Veneto,SPA,attiva,2023,17600,140,8200,2200,freddoartigiano@pec.it,freddoartigiano.example.it
+1052,Gelati del Sud Srl,Salerno,SA,Campania,SRL,attiva,2023,3600,38,1700,340,gelatidelsud@pec.it,
+1052,Neve Bianca Srl,Belluno,BL,Veneto,SRL,attiva,2023,2100,24,980,190,nevebianca@pec.it,
+1052,Cremeria Toscana Srl,Pisa,PI,Toscana,SRL,attiva,2023,1500,17,700,130,cremeriatoscana@pec.it,
