@@ -234,11 +234,63 @@ function buildArchetype(sector) {
     { key: 'risk', label: 'Rischio operativo', value: operatingRisk[0], detail: operatingRisk.slice(1).join(' · ') || 'nessun rischio dominante emergente', tone: 'amber' },
   ]
 
+  const valueChain = [
+    {
+      key: 'input',
+      label: 'Input',
+      value: capexIntensity == null ? 'n.d.' : capexIntensity >= 0.08 ? 'capital input-heavy' : 'capital input-light',
+      detail: capexIntensity == null ? 'non leggibile dai dati' : `${fmtPct(capexIntensity)} investimenti/fatturato`,
+      tone: capexIntensity == null ? 'neutral' : capexIntensity >= 0.08 ? 'amber' : 'teal',
+    },
+    {
+      key: 'processing',
+      label: 'Processo',
+      value: intensityBand || 'n.d.',
+      detail: payrollOnVa == null ? 'non leggibile dai dati' : `${fmtPct(payrollOnVa)} del VA in personale`,
+      tone: intensityBand == null ? 'neutral' : intensityBand === 'labor-heavy' ? 'amber' : 'teal',
+    },
+    {
+      key: 'scale',
+      label: 'Scala operativa',
+      value: structureBand || 'n.d.',
+      detail: companyWorkers == null ? 'non leggibile dai dati' : `${fmtRatio(companyWorkers)} addetti/impresa`,
+      tone: structureBand == null ? 'neutral' : companyWorkers >= 30 ? 'blue' : 'teal',
+    },
+    {
+      key: 'pricing',
+      label: 'Pricing power',
+      value: marginBand || 'n.d.',
+      detail: margin == null ? 'non leggibile dai dati' : `${fmtPct(margin)} MOL/fatturato`,
+      tone: margin == null ? 'neutral' : margin >= 0.2 ? 'teal' : 'amber',
+    },
+    {
+      key: 'distribution',
+      label: 'Distribuzione',
+      value: marketBand || 'n.d.',
+      detail: largeShare == null ? 'non leggibile dai dati' : `${fmtPct(largeShare)} quota grandi`,
+      tone: largeShare == null ? 'neutral' : largeShare >= 0.5 ? 'blue' : 'teal',
+    },
+    {
+      key: 'resilience',
+      label: 'Resilienza',
+      value: operatingRisk.length > 1 ? 'mix di pressioni' : 'profilo lineare',
+      detail: operatingRisk.join(' · '),
+      tone: operatingRisk.length > 1 ? 'amber' : 'teal',
+    },
+  ]
+
   const companyNarrative = [
     `Se fosse un'azienda, il suo motore sarebbe: ${revenueEngine}.`,
     `La struttura dei costi è: ${costEngine}.`,
     `Il modello di capitale è: ${capitalEngine}.`,
     `Il campo competitivo è: ${marketEngine}.`,
+  ].join(' ')
+
+  const valueChainNarrative = [
+    `Input e capitale: ${capitalEngine}.`,
+    `Processo interno: ${intensityBand || 'non leggibile'} con ${companyWorkers == null ? 'scala non disponibile' : `${fmtRatio(companyWorkers)} addetti per impresa`}.`,
+    `Uscita economica: ${marginBand || 'margini non leggibili'} e ${productivityBand || 'produttività non leggibile'}.`,
+    `Pressione esterna: ${marketBand || 'mercato non leggibile'} con ${largeShare == null ? 'quota grandi non disponibile' : `${fmtPct(largeShare)} grandi`}.`,
   ].join(' ')
 
   return {
@@ -250,6 +302,8 @@ function buildArchetype(sector) {
     diagnostics,
     companyModel,
     companyNarrative,
+    valueChain,
+    valueChainNarrative,
   }
 }
 
@@ -503,6 +557,19 @@ export default function SectorLens({
           <p className="company-model-copy">{business.companyNarrative}</p>
           <div className="company-model-grid">
             {business.companyModel.map((item) => (
+              <div key={item.key} className={`company-model-card ${item.tone}`}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <em>{item.detail}</em>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="value-chain">
+          <h4 className="company-model-title">Catena del valore proxy</h4>
+          <p className="company-model-copy">{business.valueChainNarrative}</p>
+          <div className="company-model-grid">
+            {business.valueChain.map((item) => (
               <div key={item.key} className={`company-model-card ${item.tone}`}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
