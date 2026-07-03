@@ -1,19 +1,12 @@
-:root {
-  --bg: #0c1018;
-  --panel: #121826;
-  --panel2: #18203049;
-  --line: #232c3d;
-  --txt: #e6ebf3;
-  --mut: #8b97ab;
-  --teal: #2dd4bf;
-  --accent: #5b8cff;
-}
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; background: var(--bg); color: var(--txt); }
 body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 .app { max-width: 1180px; margin: 0 auto; padding: 22px 22px 60px; }
 .screen { padding: 80px; text-align: center; color: var(--mut); }
 .screen.err { color: #f87171; }
+.skel { background: linear-gradient(90deg, var(--panel2), var(--line), var(--panel2)); background-size: 200% 100%; animation: skel-pulse 1.4s ease-in-out infinite; border-radius: 12px; }
+.skel-loading { width: 220px; height: 44px; margin: 0 auto 14px; }
+@keyframes skel-pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* hero */
 .hero { display: flex; align-items: baseline; gap: 12px; }
@@ -139,6 +132,17 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .th-sort { cursor: pointer; }
 .grid-wrap { overflow-x: auto; }
 
+/* card primitive — canonical replacement for the various one-off focus/business/peer/hier card classes below */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; flex-direction: column; gap: 4px; }
+.card-lbl { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
+.card-val { font-size: 14px; line-height: 1.25; color: var(--txt); font-variant-numeric: tabular-nums; }
+.card-val.lg { font-size: 20px; font-weight: 700; }
+.card-note { color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
+.card.tone-teal .card-val { color: var(--teal); }
+.card.tone-blue .card-val { color: #60a5fa; }
+.card.tone-amber .card-val { color: #f59e0b; }
+.card.raised { border-radius: 14px; background: linear-gradient(180deg, #101724, #0e1420); }
+
 /* focus drilldown */
 .focus { margin: 14px 0 18px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, #111724, #0c1018); box-shadow: 0 12px 28px rgba(0, 0, 0, .18); }
 .focus-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
@@ -149,19 +153,12 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .focus-chip { background: #142030; border: 1px solid #243145; color: var(--txt); border-radius: 999px; padding: 4px 9px; font-size: 11.5px; }
 .focus-lineage { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 12px 0 14px; }
 .focus-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.focus-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; }
-.focus-k { color: var(--mut); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
-.focus-v { margin-top: 5px; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.focus-note { margin-top: 4px; color: #5e6b80; font-size: 11px; line-height: 1.35; }
 .focus-memo { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, #101724, #0d1320); }
 .focus-memo-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
 .focus-memo-head h3 { margin: 4px 0 0; font-size: 17px; letter-spacing: -0.2px; }
 .focus-memo-stats { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.focus-memo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
-.focus-memo-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; }
-.focus-memo-card span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
-.focus-memo-card strong { display: block; margin-top: 5px; font-size: 14px; line-height: 1.25; }
-.focus-memo-card em { display: block; margin-top: 4px; color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
+.focus-memo-group-lbl { margin: 14px 0 8px; color: var(--mut); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+.focus-memo-narrative, .focus-memo-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
 .focus-audit { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 10px; }
 .focus-audit-col { padding: 10px 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(15, 21, 33, .7); }
 .focus-audit-col > span { display: block; color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
@@ -171,48 +168,15 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .focus-copy { margin: 0 0 10px; color: var(--mut); font-size: 13px; line-height: 1.5; }
 .focus-summary { color: #94a3b8; }
 .focus-mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.focus-mini { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; }
-.focus-mini span { display: block; color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
-.focus-mini strong { display: block; margin-top: 5px; font-size: 17px; }
 .business-badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; }
 .business-chip { background: linear-gradient(180deg, #132337, #101724); color: var(--teal); border-color: #254155; text-transform: none; letter-spacing: 0; font-weight: 700; }
 .business-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 12px; }
-.business-signal { display: flex; flex-direction: column; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; }
-.business-signal span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
-.business-signal strong { font-size: 14px; line-height: 1.25; }
-.business-signal em { color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
-.business-signal.teal strong { color: var(--teal); }
-.business-signal.blue strong { color: #60a5fa; }
-.business-signal.amber strong { color: #f59e0b; }
-.business-signal.neutral strong { color: var(--txt); }
 .business-frame { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 10px; }
-.business-frame-card { display: flex; flex-direction: column; gap: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, #101724, #0e1420); }
-.business-frame-card span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
-.business-frame-card strong { font-size: 15px; line-height: 1.2; }
-.business-frame-card em { color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
-.business-frame-card.teal strong { color: var(--teal); }
-.business-frame-card.blue strong { color: #60a5fa; }
-.business-frame-card.amber strong { color: #f59e0b; }
-.business-frame-card.neutral strong { color: var(--txt); }
 .company-model { margin: 10px 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, #0f1521, #0c121d); }
 .company-model-title { margin: 0; color: var(--txt); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .company-model-copy { margin: 6px 0 10px; color: #94a3b8; font-size: 12.5px; line-height: 1.5; }
 .company-model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.company-model-card { display: flex; flex-direction: column; gap: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.company-model-card span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
-.company-model-card strong { font-size: 14px; line-height: 1.25; }
-.company-model-card em { color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
-.company-model-card.blue strong { color: #60a5fa; }
-.company-model-card.teal strong { color: var(--teal); }
-.company-model-card.amber strong { color: #f59e0b; }
 .hier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 10px 0 0; }
-.hier-card { display: flex; flex-direction: column; gap: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.hier-card span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
-.hier-card strong { font-size: 14px; line-height: 1.25; color: var(--txt); }
-.hier-card em { color: #5e6b80; font-size: 11px; font-style: normal; line-height: 1.35; }
-.hier-card.teal strong { color: var(--teal); }
-.hier-card.blue strong { color: #60a5fa; }
-.hier-card.amber strong { color: #f59e0b; }
 .focus-section { margin: 10px 0 0; }
 .focus-section-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; color: var(--txt); cursor: pointer; }
 .focus-section-toggle:hover { border-color: #334155; }
@@ -225,17 +189,16 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
 .peer-section { margin: 10px 0 14px; }
 .peer-title { margin: 0 0 10px; color: var(--txt); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .peer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
-.peer-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; }
-.peer-card.blue { box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .08); }
-.peer-card.teal { box-shadow: inset 0 0 0 1px rgba(45, 212, 191, .08); }
-.peer-card.amber { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .08); }
+.peer-card.tone-blue { box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .08); }
+.peer-card.tone-teal { box-shadow: inset 0 0 0 1px rgba(45, 212, 191, .08); }
+.peer-card.tone-amber { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .08); }
 .peer-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .peer-head span { color: var(--mut); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; }
 .peer-head strong { color: var(--txt); font-size: 14px; font-variant-numeric: tabular-nums; }
 .peer-bar { height: 8px; margin: 8px 0 6px; background: #151d2c; border-radius: 999px; overflow: hidden; }
 .peer-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #4b5563, #2dd4bf); min-width: 4px; }
-.peer-card.blue .peer-bar i { background: linear-gradient(90deg, #4b5563, #60a5fa); }
-.peer-card.amber .peer-bar i { background: linear-gradient(90deg, #4b5563, #f59e0b); }
+.peer-card.tone-blue .peer-bar i { background: linear-gradient(90deg, #4b5563, #60a5fa); }
+.peer-card.tone-amber .peer-bar i { background: linear-gradient(90deg, #4b5563, #f59e0b); }
 .peer-foot { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--mut); }
 .peer-foot em { font-style: normal; color: #5e6b80; }
 .peer-note { margin-top: 5px; color: #94a3b8; font-size: 11px; line-height: 1.35; }
@@ -326,6 +289,11 @@ body { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI"
   --accent: #8fb4ff;
   --amber: #f4b84a;
   --green: #35d99a;
+  --fs-label: 10.5px;
+  --fs-note: 11px;
+  --fs-body: 12.5px;
+  --fs-value: 14px;
+  --fs-value-lg: 20px;
 }
 
 html, body, #root {
@@ -535,8 +503,16 @@ html, body, #root {
   cursor: pointer;
 }
 
-.command-menu button:hover {
+.command-menu button:hover,
+.command-menu button.active {
   background: rgba(57, 215, 245, .1);
+}
+
+.command-empty {
+  padding: 14px;
+  color: var(--mut);
+  font-size: 12.5px;
+  text-align: center;
 }
 
 .command-menu span,
@@ -645,15 +621,8 @@ html, body, #root {
   letter-spacing: -.06em;
 }
 
-.focus-card,
-.focus-memo-card,
+.card,
 .focus-audit-col,
-.business-signal,
-.business-frame-card,
-.company-model-card,
-.hier-card,
-.peer-card,
-.focus-mini,
 .filter,
 .assume,
 .arena-card {
@@ -662,7 +631,7 @@ html, body, #root {
   border-radius: 16px;
 }
 
-.focus-v {
+.card-val.lg {
   color: #fff;
   font-size: 24px;
   letter-spacing: -.04em;
@@ -687,7 +656,11 @@ html, body, #root {
 }
 
 .company-model-grid,
-.focus-memo-grid,
+.focus-memo-narrative,
+.focus-memo-scores,
+.focus-mini-grid,
+.hier-grid,
+.peer-grid,
 .business-grid,
 .business-frame,
 .focus-grid {

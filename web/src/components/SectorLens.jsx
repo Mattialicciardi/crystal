@@ -387,10 +387,10 @@ function buildArchetype(sector, context = {}) {
 
 function MetricCard({ label, value, note }) {
   return (
-    <div className="focus-card">
-      <div className="focus-k">{label}</div>
-      <div className="focus-v">{value}</div>
-      {note && <div className="focus-note">{note}</div>}
+    <div className="card">
+      <div className="card-lbl">{label}</div>
+      <div className="card-val lg">{value}</div>
+      {note && <div className="card-note">{note}</div>}
     </div>
   )
 }
@@ -450,10 +450,10 @@ function concentrationStats(rows, parentRevenue) {
 
 function HierarchyCard({ label, value, note, tone = 'neutral' }) {
   return (
-    <div className={`hier-card ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <em>{note}</em>
+    <div className={`card${tone !== 'neutral' ? ` tone-${tone}` : ''}`}>
+      <span className="card-lbl">{label}</span>
+      <strong className="card-val">{value}</strong>
+      <em className="card-note">{note}</em>
     </div>
   )
 }
@@ -483,7 +483,7 @@ function PeerCard({ label, value, peer, note, tone = 'neutral' }) {
       : percentile >= 0.2 ? 'sotto mediana'
       : 'bottom quartile'
   return (
-    <div className={`peer-card ${tone}`}>
+    <div className={`card peer-card${tone !== 'neutral' ? ` tone-${tone}` : ''}`}>
       <div className="peer-head">
         <span>{label}</span>
         <strong>{value}</strong>
@@ -748,61 +748,65 @@ export default function SectorLens({
             {executiveMemo.map((item) => <span key={item} className="focus-chip">{item}</span>)}
           </div>
         </div>
-        <div className="focus-memo-grid">
-          <div className="focus-memo-card">
-            <span>Che tipo di azienda è</span>
-            <strong>{business.companyType}</strong>
-            <em>{business.companyNarrative}</em>
+        <div className="focus-memo-group-lbl">Narrativa</div>
+        <div className="focus-memo-narrative">
+          <div className="card">
+            <span className="card-lbl">Che tipo di azienda è</span>
+            <strong className="card-val">{business.companyType}</strong>
+            <em className="card-note">{business.companyNarrative}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Dove si difende</span>
-            <strong>{business.companyModel[0]?.value || '—'}</strong>
-            <em>{business.companyModel[0]?.detail || '—'}</em>
+          <div className="card">
+            <span className="card-lbl">Dove si difende</span>
+            <strong className="card-val">{business.companyModel[0]?.value || '—'}</strong>
+            <em className="card-note">{business.companyModel[0]?.detail || '—'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Dove soffre</span>
-            <strong>{business.dependencyModel[0]?.value || '—'}</strong>
-            <em>{business.dependencyModel[0]?.detail || '—'}</em>
+          <div className="card">
+            <span className="card-lbl">Dove soffre</span>
+            <strong className="card-val">{business.dependencyModel[0]?.value || '—'}</strong>
+            <em className="card-note">{business.dependencyModel[0]?.detail || '—'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Come leggerlo</span>
-            <strong>{focus.level} · {childCount} figli · {leafCount} foglie</strong>
-            <em>{parentCrumb ? `sotto ${parentCrumb.label}` : 'radice del settore'}</em>
+          <div className="card">
+            <span className="card-lbl">Come leggerlo</span>
+            <strong className="card-val">{focus.level} · {childCount} figli · {leafCount} foglie</strong>
+            <em className="card-note">{parentCrumb ? `sotto ${parentCrumb.label}` : 'radice del settore'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Driver dominante</span>
-            <strong>{business.dominantDriver}</strong>
-            <em>{business.companyModel.find((item) => item.key === 'revenue')?.detail || '—'}</em>
+          <div className="card">
+            <span className="card-lbl">Driver dominante</span>
+            <strong className="card-val">{business.dominantDriver}</strong>
+            <em className="card-note">{business.companyModel.find((item) => item.key === 'revenue')?.detail || '—'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Vincolo principale</span>
-            <strong>{business.mainConstraint}</strong>
-            <em>{business.dependencyModel.find((item) => item.key === 'pressure')?.detail || '—'}</em>
+          <div className="card">
+            <span className="card-lbl">Vincolo principale</span>
+            <strong className="card-val">{business.mainConstraint}</strong>
+            <em className="card-note">{business.dependencyModel.find((item) => item.key === 'pressure')?.detail || '—'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Prossimo check</span>
-            <strong>{business.nextCheck}</strong>
-            <em>{leafRows.length > 0 ? 'le foglie aiutano a validare il quadro' : 'serve più dettaglio a valle'}</em>
+          <div className="card">
+            <span className="card-lbl">Prossimo check</span>
+            <strong className="card-val">{business.nextCheck}</strong>
+            <em className="card-note">{leafRows.length > 0 ? 'le foglie aiutano a validare il quadro' : 'serve più dettaglio a valle'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Profondità operativa</span>
-            <strong>{scoreLabel(depthScore)}</strong>
-            <em>{leafCount > 0 ? 'misura scala, produttività e ramificazioni della nicchia' : 'assenza di foglie limita la lettura'}</em>
+        </div>
+        <div className="focus-memo-group-lbl">Punteggi</div>
+        <div className="focus-memo-scores">
+          <div className="card tone-teal">
+            <span className="card-lbl">Profondità operativa</span>
+            <strong className="card-val lg">{scoreLabel(depthScore)}</strong>
+            <em className="card-note">{leafCount > 0 ? 'misura scala, produttività e ramificazioni della nicchia' : 'assenza di foglie limita la lettura'}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Pressione competitiva</span>
-            <strong>{scoreLabel(pressureScore)}</strong>
-            <em>{business.mainConstraint}</em>
+          <div className="card tone-amber">
+            <span className="card-lbl">Pressione competitiva</span>
+            <strong className="card-val lg">{scoreLabel(pressureScore)}</strong>
+            <em className="card-note">{business.mainConstraint}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Difendibilità</span>
-            <strong>{scoreLabel(defensibilityScore)}</strong>
-            <em>{business.dominantDriver}</em>
+          <div className="card tone-blue">
+            <span className="card-lbl">Difendibilità</span>
+            <strong className="card-val lg">{scoreLabel(defensibilityScore)}</strong>
+            <em className="card-note">{business.dominantDriver}</em>
           </div>
-          <div className="focus-memo-card">
-            <span>Adeguatezza dati</span>
-            <strong>{scoreLabel(dataAdequacyScore)}</strong>
-            <em>{coverage == null ? 'coverage non disponibile' : `${formatShare(coverage / 100)} coverage · ${formatShare(confidence / 100)} confidence`}</em>
+          <div className="card">
+            <span className="card-lbl">Adeguatezza dati</span>
+            <strong className="card-val lg">{scoreLabel(dataAdequacyScore)}</strong>
+            <em className="card-note">{coverage == null ? 'coverage non disponibile' : `${formatShare(coverage / 100)} coverage · ${formatShare(confidence / 100)} confidence`}</em>
           </div>
         </div>
         <div className="focus-audit">
@@ -887,19 +891,19 @@ export default function SectorLens({
           </div>
           <div className="business-grid">
             {business.signals.map((signal) => (
-              <div key={signal.key} className={`business-signal ${signal.tone}`}>
-                <span>{signal.label}</span>
-                <strong>{signal.value}</strong>
-                <em>{signal.detail}</em>
+              <div key={signal.key} className={`card${signal.tone !== 'neutral' ? ` tone-${signal.tone}` : ''}`}>
+                <span className="card-lbl">{signal.label}</span>
+                <strong className="card-val">{signal.value}</strong>
+                <em className="card-note">{signal.detail}</em>
               </div>
             ))}
           </div>
           <div className="business-frame">
             {business.companyFrame.map((item) => (
-              <div key={item.key} className={`business-frame-card ${item.tone}`}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <em>{item.detail}</em>
+              <div key={item.key} className={`card${item.tone !== 'neutral' ? ` tone-${item.tone}` : ''}`}>
+                <span className="card-lbl">{item.label}</span>
+                <strong className="card-val">{item.value}</strong>
+                <em className="card-note">{item.detail}</em>
               </div>
             ))}
           </div>
@@ -917,10 +921,10 @@ export default function SectorLens({
             <p className="company-model-copy">{business.companyNarrative}</p>
             <div className="company-model-grid">
               {business.companyModel.map((item) => (
-                <div key={item.key} className={`company-model-card ${item.tone}`}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <em>{item.detail}</em>
+                <div key={item.key} className={`card${item.tone !== 'neutral' ? ` tone-${item.tone}` : ''}`}>
+                  <span className="card-lbl">{item.label}</span>
+                  <strong className="card-val">{item.value}</strong>
+                  <em className="card-note">{item.detail}</em>
                 </div>
               ))}
             </div>
@@ -929,10 +933,10 @@ export default function SectorLens({
             <p className="company-model-copy">{business.valueChainNarrative}</p>
             <div className="company-model-grid">
               {business.valueChain.map((item) => (
-                <div key={item.key} className={`company-model-card ${item.tone}`}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <em>{item.detail}</em>
+                <div key={item.key} className={`card${item.tone !== 'neutral' ? ` tone-${item.tone}` : ''}`}>
+                  <span className="card-lbl">{item.label}</span>
+                  <strong className="card-val">{item.value}</strong>
+                  <em className="card-note">{item.detail}</em>
                 </div>
               ))}
             </div>
@@ -948,10 +952,10 @@ export default function SectorLens({
           <p className="company-model-copy">Leggo la dipendenza esterna usando margine, concentrazione, barriera e intensità capitale: è una mappa di pressione, non un bilancio clienti/fornitori reale.</p>
           <div className="company-model-grid">
             {business.dependencyModel.map((item) => (
-              <div key={item.key} className={`company-model-card ${item.tone}`}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <em>{item.detail}</em>
+              <div key={item.key} className={`card${item.tone !== 'neutral' ? ` tone-${item.tone}` : ''}`}>
+                <span className="card-lbl">{item.label}</span>
+                <strong className="card-val">{item.value}</strong>
+                <em className="card-note">{item.detail}</em>
               </div>
             ))}
           </div>
@@ -1017,37 +1021,37 @@ export default function SectorLens({
           </table>
         </div>
         <div className="focus-mini-grid">
-          <div className="focus-mini">
-            <span>Ricavo medio per impresa</span>
-            <strong>{companyRevenue == null ? '—' : fmtMoneyKeur(companyRevenue)}</strong>
+          <div className="card">
+            <span className="card-lbl">Ricavo medio per impresa</span>
+            <strong className="card-val lg">{companyRevenue == null ? '—' : fmtMoneyKeur(companyRevenue)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>Valore aggiunto per impresa</span>
-            <strong>{perFirmVa == null ? '—' : fmtMoneyKeur(perFirmVa)}</strong>
+          <div className="card">
+            <span className="card-lbl">Valore aggiunto per impresa</span>
+            <strong className="card-val lg">{perFirmVa == null ? '—' : fmtMoneyKeur(perFirmVa)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>MOL per impresa</span>
-            <strong>{perFirmMol == null ? '—' : fmtMoneyKeur(perFirmMol)}</strong>
+          <div className="card">
+            <span className="card-lbl">MOL per impresa</span>
+            <strong className="card-val lg">{perFirmMol == null ? '—' : fmtMoneyKeur(perFirmMol)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>Addetti medi per impresa</span>
-            <strong>{companyWorkers == null ? '—' : fmtRatio(companyWorkers)}</strong>
+          <div className="card">
+            <span className="card-lbl">Addetti medi per impresa</span>
+            <strong className="card-val lg">{companyWorkers == null ? '—' : fmtRatio(companyWorkers)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>Ricavo per addetto</span>
-            <strong>{perWorkerRevenue == null ? '—' : fmtMoneyKeur(perWorkerRevenue)}</strong>
+          <div className="card">
+            <span className="card-lbl">Ricavo per addetto</span>
+            <strong className="card-val lg">{perWorkerRevenue == null ? '—' : fmtMoneyKeur(perWorkerRevenue)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>VA per addetto</span>
-            <strong>{perWorkerVa == null ? '—' : fmtMoneyKeur(perWorkerVa)}</strong>
+          <div className="card">
+            <span className="card-lbl">VA per addetto</span>
+            <strong className="card-val lg">{perWorkerVa == null ? '—' : fmtMoneyKeur(perWorkerVa)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>Investimenti per addetto</span>
-            <strong>{perWorkerInvest == null ? '—' : fmtMoneyKeur(perWorkerInvest)}</strong>
+          <div className="card">
+            <span className="card-lbl">Investimenti per addetto</span>
+            <strong className="card-val lg">{perWorkerInvest == null ? '—' : fmtMoneyKeur(perWorkerInvest)}</strong>
           </div>
-          <div className="focus-mini">
-            <span>Investimenti totali</span>
-            <strong>{invest == null ? '—' : fmtMoneyKeur(invest)}</strong>
+          <div className="card">
+            <span className="card-lbl">Investimenti totali</span>
+            <strong className="card-val lg">{invest == null ? '—' : fmtMoneyKeur(invest)}</strong>
           </div>
         </div>
       </div>

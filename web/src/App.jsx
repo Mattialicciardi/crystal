@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Treemap from './components/Treemap.jsx'
 import CompareView from './components/CompareView.jsx'
 import ScreenerView from './components/ScreenerView.jsx'
@@ -35,6 +35,8 @@ export default function App() {
   const [sort, setSort] = useState({ key: 'fatturato', dir: 'desc' })
   const [mode, setMode] = useState('explore')
   const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const commandRef = useRef(null)
 
   // indice paesi
   useEffect(() => {
@@ -53,6 +55,15 @@ export default function App() {
       .then(setData)
       .catch((e) => setErr(String(e)))
   }, [country])
+
+  useEffect(() => { setActiveIndex(-1) }, [query])
+
+  useEffect(() => {
+    if (!query) return
+    const onDoc = (e) => { if (commandRef.current && !commandRef.current.contains(e.target)) setQuery('') }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [query])
 
   const { index, childrenOf } = useMemo(() => {
     const index = new Map(), childrenOf = new Map()
@@ -80,7 +91,7 @@ export default function App() {
   }
 
   if (err) return <div className="screen err">Errore nel caricamento dati: {err}</div>
-  if (!countries || !data) return <div className="screen">Carico l'economia…</div>
+  if (!countries || !data) return <div className="screen"><div className="skel skel-loading" /><p>Carico l'economia…</p></div>
 
   const currentCode = path.length ? path[path.length - 1] : null
   const items = (childrenOf.get(currentCode ?? '__root__') || []).slice()
@@ -125,6 +136,20 @@ export default function App() {
     .filter((sector) => `${sector.code} ${sector.name}`.toLowerCase().includes(normalizedQuery))
     .sort((left, right) => (right.raw?.fatturato_keur || 0) - (left.raw?.fatturato_keur || 0))
     .slice(0, 8)
+  const onSearchKeyDown = (event) => {
+    if (event.key === 'Escape') { setQuery(''); return }
+    if (!searchResults.length) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIndex((i) => Math.min(i + 1, searchResults.length - 1))
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIndex((i) => Math.max(i - 1, 0))
+    } else if (event.key === 'Enter') {
+      const target = searchResults[activeIndex] ?? searchResults[0]
+      if (target) jumpToSector(target.code)
+    }
+  }
 
   const crumbs = [{ label: 'Economia', i: 0 }]
   path.forEach((code, i) => {
@@ -160,18 +185,37 @@ export default function App() {
           <h1>Crystal</h1>
           <p>European economy intelligence · dal paese alla nicchia aziendale</p>
         </div>
-        <div className="command">
+        <div className="command" ref={commandRef}>
           <span>⌕</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca settore, codice o azienda media…" />
-          {searchResults.length > 0 && (
-            <div className="command-menu">
-              {searchResults.map((sector) => (
-                <button key={sector.code} onClick={() => jumpToSector(sector.code)}>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder="Cerca settore, codice o azienda media…"
+            role="combobox"
+            aria-expanded={normalizedQuery.length >= 2}
+            aria-controls="command-listbox"
+            aria-activedescendant={activeIndex >= 0 ? `command-opt-${activeIndex}` : undefined}
+          />
+          {normalizedQuery.length >= 2 && (
+            <div className="command-menu" id="command-listbox" role="listbox">
+              {searchResults.length > 0 ? searchResults.map((sector, i) => (
+                <button
+                  key={sector.code}
+                  id={`command-opt-${i}`}
+                  role="option"
+                  aria-selected={i === activeIndex}
+                  className={i === activeIndex ? 'active' : ''}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onClick={() => jumpToSector(sector.code)}
+                >
                   <span>{sector.code}</span>
                   <strong>{sector.name}</strong>
                   <em>{sector.level}</em>
                 </button>
-              ))}
+              )) : (
+                <div className="command-empty">Nessun risultato per «{query}»</div>
+              )}
             </div>
           )}
         </div>
