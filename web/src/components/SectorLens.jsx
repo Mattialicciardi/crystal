@@ -51,9 +51,11 @@ function deriveBand(value, bands) {
   return null
 }
 
-function buildArchetype(sector) {
+function buildArchetype(sector, context = {}) {
+  const { directRows = [], leafRows = [], siblingRows = [] } = context
   const revenuePerFirm = sector.raw?.imprese ? sector.raw.fatturato_keur / sector.raw.imprese : null
   const workersPerFirm = sector.raw?.imprese ? sector.raw.occupati / sector.raw.imprese : null
+  const companyWorkers = workersPerFirm
   const vaMargin = sector.raw?.fatturato_keur ? sector.raw.valore_aggiunto_keur / sector.raw.fatturato_keur : null
   const payrollOnVa = sector.raw?.valore_aggiunto_keur ? sector.raw.costi_personale_keur / sector.raw.valore_aggiunto_keur : null
   const capexIntensity = sector.raw?.fatturato_keur ? sector.raw.investimenti_keur / sector.raw.fatturato_keur : null
@@ -509,6 +511,7 @@ export default function SectorLens({
   onDrill,
   sizeFmt,
   hasChildren,
+  onNavigate,
 }) {
   if (!focus) return null
   const [openSections, setOpenSections] = useState({
@@ -553,7 +556,6 @@ export default function SectorLens({
   const payrollShareOnVa = valueAdded ? payroll / valueAdded : null
   const molShareOnVa = valueAdded ? mol / valueAdded : null
   const investShareOnRevenue = focus.raw?.fatturato_keur ? invest / focus.raw.fatturato_keur : null
-  const business = buildArchetype(focus)
   const peerCards = [
     {
       key: 'scale',
@@ -621,7 +623,9 @@ export default function SectorLens({
   const leafConcentration = concentrationStats(leafRows, focus.raw?.fatturato_keur)
   const siblingRows = peerGroup.filter((row) => row.code !== focus.code)
   const siblingRevenue = sumRevenue(siblingRows)
-  const siblingContext = siblingRows.length ? concentrationStats(siblingRows, parentCrumb ? (parentCrumb.raw?.fatturato_keur || siblingRevenue + (focus.raw?.fatturato_keur || 0)) : siblingRevenue + (focus.raw?.fatturato_keur || 0)) : null
+  const siblingContext = siblingRows.length ? concentrationStats(siblingRows, siblingRevenue + (focus.raw?.fatturato_keur || 0)) : null
+  const capitalBand = investShareOnRevenue == null ? null : investShareOnRevenue >= 0.08 ? 'capex-heavy' : investShareOnRevenue >= 0.03 ? 'capex moderato' : 'asset-light'
+  const business = buildArchetype(focus, { directRows, leafRows, siblingRows })
   const executiveMemo = [
     companyWorkers == null ? 'scala non leggibile' : `${fmtRatio(companyWorkers)} addetti/impresa`,
     productivity == null ? 'produttività non leggibile' : `${fmtMoneyKeur(productivity)} VA/addetto`,
@@ -718,7 +722,7 @@ export default function SectorLens({
         {lineage.map((item, index) => (
           <span key={item.code}>
             {index > 0 && <span className="sep">▸</span>}
-            <button className={'crumb' + (index === lineage.length - 1 ? ' here' : '')} onClick={() => onDrill(item.i)}>{item.label}</button>
+            <button className={'crumb' + (index === lineage.length - 1 ? ' here' : '')} onClick={() => onNavigate ? onNavigate(item.i) : null}>{item.label}</button>
           </span>
         ))}
       </div>

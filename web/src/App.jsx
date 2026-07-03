@@ -34,6 +34,7 @@ export default function App() {
   const [preset, setPreset] = useState('fatturato')
   const [sort, setSort] = useState({ key: 'fatturato', dir: 'desc' })
   const [mode, setMode] = useState('explore')
+  const [query, setQuery] = useState('')
 
   // indice paesi
   useEffect(() => {
@@ -105,6 +106,25 @@ export default function App() {
   const drill = (code) => setPath([...path, code])
   const toLevel = (i) => setPath(path.slice(0, i))
   const clickHeader = (c) => setSort((s) => ({ key: c.key, dir: s.key === c.key && s.dir === 'desc' ? 'asc' : 'desc' }))
+  const sectorPath = (code) => {
+    const chain = []
+    let cursor = index.get(code)
+    while (cursor) {
+      chain.unshift(cursor.code)
+      cursor = cursor.parent ? index.get(cursor.parent) : null
+    }
+    return chain
+  }
+  const jumpToSector = (code) => {
+    setMode('explore')
+    setPath(sectorPath(code))
+    setQuery('')
+  }
+  const normalizedQuery = query.trim().toLowerCase()
+  const searchResults = normalizedQuery.length < 2 ? [] : [...index.values()]
+    .filter((sector) => `${sector.code} ${sector.name}`.toLowerCase().includes(normalizedQuery))
+    .sort((left, right) => (right.raw?.fatturato_keur || 0) - (left.raw?.fatturato_keur || 0))
+    .slice(0, 8)
 
   const crumbs = [{ label: 'Economia', i: 0 }]
   path.forEach((code, i) => {
@@ -114,13 +134,46 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="hero">
-        <h1>Crystal</h1>
+      <aside className="side">
+        <div className="brand">
+          <span className="brand-mark">◆</span>
+          <span>Crystal</span>
+        </div>
+        <div className="side-label">Workspace</div>
         <div className="modes">
-          <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Esplora paese</button>
+          <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Panoramica</button>
           <button className={'mode' + (mode === 'compare' ? ' on' : '')} onClick={() => setMode('compare')}>Confronta paesi</button>
           <button className={'mode' + (mode === 'screener' ? ' on' : '')} onClick={() => setMode('screener')}>Screener</button>
           <button className={'mode' + (mode === 'mercato' ? ' on' : '')} onClick={() => setMode('mercato')}>Mercato</button>
+        </div>
+        <div className="side-label">Percorso</div>
+        <div className="side-path">
+          <span>{m.country_name}</span>
+          <strong>{focus ? focus.name : 'Economia completa'}</strong>
+          <em>{focus ? `${focus.code} · ${focus.level}` : `${items.length} macro-settori`}</em>
+        </div>
+      </aside>
+
+      <main className="workspace">
+      <header className="topbar">
+        <div>
+          <h1>Crystal</h1>
+          <p>European economy intelligence · dal paese alla nicchia aziendale</p>
+        </div>
+        <div className="command">
+          <span>⌕</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca settore, codice o azienda media…" />
+          {searchResults.length > 0 && (
+            <div className="command-menu">
+              {searchResults.map((sector) => (
+                <button key={sector.code} onClick={() => jumpToSector(sector.code)}>
+                  <span>{sector.code}</span>
+                  <strong>{sector.name}</strong>
+                  <em>{sector.level}</em>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
@@ -172,6 +225,7 @@ export default function App() {
           sizeLabel={view.label}
           sizeFmt={(value) => (view.kind === 'money' ? fmtMoneyKeur(value) : fmtCount(value))}
           onDrill={drill}
+          onNavigate={toLevel}
           hasChildren={(code) => (childrenOf.get(code) || []).length > 0}
         />
       )}
@@ -221,6 +275,7 @@ export default function App() {
         <span>{m.source}</span>
         <span>Valori monetari in € · CAGR sull'orizzonte disponibile · «—» = dato non disponibile (segreto statistico o non pubblicato). Italia a 4 cifre (ISTAT); resto d'Europa a 3 cifre (Eurostat).</span>
       </footer>
+      </main>
     </div>
   )
 }
