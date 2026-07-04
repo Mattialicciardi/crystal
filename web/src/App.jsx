@@ -217,6 +217,7 @@ export default function App() {
       {mode === 'explore' && focus && (
         <SectorLens
           focus={focus}
+          country={country}
           lineage={crumbs}
           directChildren={focusChildren}
           leafDescendants={focusLeaves}

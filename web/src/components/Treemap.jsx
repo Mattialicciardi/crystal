@@ -7,11 +7,13 @@ const trunc = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
 // items: array di settori-figli del nodo corrente. Area = sizeKey. Colore = crescita (CAGR).
 export default function Treemap({ items, sizeKey, viewKind, onDrill, hasChildren, W = 1000, H = 460 }) {
   const leaves = useMemo(() => {
+    if (!items || !items.length) return []
     const root = hierarchy({ children: items })
       .sum((d) => (d.children ? 0 : sizeValue(d, sizeKey)))
       .sort((a, b) => (b.value || 0) - (a.value || 0))
     treemap().size([W, H]).paddingInner(2).round(true)(root)
-    return root.leaves().filter((l) => l.x1 - l.x0 > 1 && l.y1 - l.y0 > 1)
+    // Esclude l'eventuale radice sintetica (senza code/raw) quando i figli hanno area nulla.
+    return root.leaves().filter((l) => l.data?.code && l.x1 - l.x0 > 1 && l.y1 - l.y0 > 1)
   }, [items, sizeKey, W, H])
 
   if (!leaves.length) {
