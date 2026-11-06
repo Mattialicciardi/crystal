@@ -1,282 +1,529 @@
 import { useEffect, useMemo, useState } from 'react'
-import Treemap from './components/Treemap.jsx'
-import CompareView from './components/CompareView.jsx'
-import ScreenerView from './components/ScreenerView.jsx'
-import MarketView from './components/MarketView.jsx'
-import SectorLens from './components/SectorLens.jsx'
-import InfoDot from './components/InfoDot.jsx'
-import Legend from './components/Legend.jsx'
-import { METRICS, ALL_METRIC_IDS } from './metrics.js'
+import { InfoIcon, SearchIcon } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import {
-  VIEWS, LEVEL_LABEL, LEVEL_PLURAL, growthColor, fmtMoneyKeur, fmtCount,
-} from './lib.js'
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import InsightPanel from './components/InsightPanel.jsx'
+import SbsTreemap from './components/SbsTreemap.jsx'
+import {
+  COLUMNS,
+  DEFAULT_SIZE,
+  GLOSSARY,
+  KPI_IDS,
+  LEVEL_LABEL,
+  LEVEL_PLURAL,
+  SIZE_METRICS,
+  ancestorsOf,
+  columnById,
+  displayCell,
+  indexDataset,
+  formatVariation,
+  normalize,
+  publishedValue,
+  rootReading,
+  sortSectors,
+  titleIt,
+} from './sbsModel.js'
 
 const BASE = import.meta.env.BASE_URL
 
-// Colonne = Settore + TUTTE le metriche (stesso set di Screener/Mercato).
-const COLS = [{ key: 'name', label: 'Settore' }, ...ALL_METRIC_IDS.map((id) => ({ key: id, label: METRICS[id].label }))]
-
-const PRESETS = [
-  { id: 'fatturato',      label: 'Dimensione',     size: 'fatturato',       sort: 'fatturato',    dir: 'desc' },
-  { id: 'produttivita',   label: 'Produttività',   size: 'valore_aggiunto', sort: 'produttivita', dir: 'desc' },
-  { id: 'redditivita',    label: 'Redditività',    size: 'fatturato',       sort: 'redditivita',  dir: 'desc' },
-  { id: 'crescita',       label: 'Crescita',       size: 'fatturato',       sort: 'crescita',     dir: 'desc' },
-  { id: 'frammentazione', label: 'Frammentazione', size: 'imprese',         sort: 'struttura',    dir: 'asc'  },
-]
-
 export default function App() {
-  const [countries, setCountries] = useState(null)
-  const [country, setCountry] = useState(null)
   const [data, setData] = useState(null)
-  const [err, setErr] = useState(null)
+  const [error, setError] = useState(null)
+  const [year, setYear] = useState('2023')
   const [path, setPath] = useState([])
-  const [sizeKey, setSizeKey] = useState('fatturato')
-  const [preset, setPreset] = useState('fatturato')
-  const [sort, setSort] = useState({ key: 'fatturato', dir: 'desc' })
-  const [mode, setMode] = useState('explore')
+  const [sizeKey, setSizeKey] = useState(DEFAULT_SIZE)
+  const [sort, setSort] = useState({ key: 'AV_MEUR', dir: 'desc' })
   const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState(null)
 
-  // indice paesi
   useEffect(() => {
-    fetch(`${BASE}index.json`)
-      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
-      .then((idx) => { setCountries(idx.countries); setCountry(idx.default || idx.countries[0]?.code) })
-      .catch((e) => setErr(String(e)))
+    fetch(`${BASE}sbs-it.json`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
+      .then(setData)
+      .catch((reason) => setError(String(reason)))
   }, [])
 
-  // dataset del paese selezionato
-  useEffect(() => {
-    if (!country) return
-    setData(null); setPath([])
-    fetch(`${BASE}countries/${country}.json`)
-      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
-      .then(setData)
-      .catch((e) => setErr(String(e)))
-  }, [country])
+  const indexed = useMemo(() => (data ? indexDataset(data) : null), [data])
 
-  const { index, childrenOf } = useMemo(() => {
-    const index = new Map(), childrenOf = new Map()
-    if (data) {
-      for (const s of data.sectors) index.set(s.code, s)
-      for (const s of data.sectors) {
-        const k = s.parent ?? '__root__'
-        if (!childrenOf.has(k)) childrenOf.set(k, [])
-        childrenOf.get(k).push(s)
-      }
-    }
-    return { index, childrenOf }
-  }, [data])
-
-  const collectLeafDescendants = (code) => {
-    const leaves = []
-    const stack = [...(childrenOf.get(code) || [])]
-    while (stack.length) {
-      const sector = stack.pop()
-      const children = childrenOf.get(sector.code) || []
-      if (children.length) stack.push(...children)
-      else leaves.push(sector)
-    }
-    return leaves
+  if (error) {
+    return (
+      <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col justify-center px-4">
+        <Alert variant="destructive">
+          <AlertTitle>I dati non si caricano</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </main>
+    )
   }
 
-  if (err) return <div className="screen err">Errore nel caricamento dati: {err}</div>
-  if (!countries || !data) return <div className="screen">Carico l'economia…</div>
+  if (!data || !indexed) return <LoadingState />
 
-  const currentCode = path.length ? path[path.length - 1] : null
-  const items = (childrenOf.get(currentCode ?? '__root__') || []).slice()
+  const { byCode, children } = indexed
+  const focusCode = path.length ? path[path.length - 1] : null
+  const focus = focusCode ? byCode.get(focusCode) : data.total
+  const rows = children.get(focusCode || '__root__') || []
+  const normalizedQuery = normalize(query.trim())
+  const filtered = normalizedQuery
+    ? rows.filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
+    : rows
+  const sorted = sortSectors(filtered, year, sort)
+  const level = sorted[0]?.level || rows[0]?.level
+  const globalHits = normalizedQuery.length < 2 ? [] : data.sectors
+    .filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
+    .filter((sector) => !rows.some((row) => row.code === sector.code))
+    .slice(0, 6)
 
-  items.sort((a, b) => {
-    if (sort.key === 'name') return sort.dir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    const g = METRICS[sort.key].get
-    const va = g(a), vb = g(b)
-    const na = va == null ? -Infinity : va, nb = vb == null ? -Infinity : vb
-    return sort.dir === 'asc' ? na - nb : nb - na
-  })
-
-  const view = VIEWS[sizeKey]
-  const m = data.meta
-  const srcShort = (m.source || '').includes('ISTAT') ? 'ISTAT' : 'Eurostat'
-  const granLabel = m.max_level === 'class' ? '4 cifre ATECO' : '3 cifre NACE'
-  const focus = currentCode ? index.get(currentCode) : null
-  const focusChildren = currentCode ? (childrenOf.get(currentCode) || []) : (childrenOf.get('__root__') || [])
-  const focusLeaves = currentCode ? collectLeafDescendants(currentCode) : []
-  const focusPeers = focus ? (childrenOf.get(focus.parent ?? '__root__') || []) : []
-
-  const applyPreset = (p) => { setPreset(p.id); setSizeKey(p.size); setSort({ key: p.sort, dir: p.dir }) }
-  const drill = (code) => setPath([...path, code])
-  const toLevel = (i) => setPath(path.slice(0, i))
-  const clickHeader = (c) => setSort((s) => ({ key: c.key, dir: s.key === c.key && s.dir === 'desc' ? 'asc' : 'desc' }))
-  const sectorPath = (code) => {
-    const chain = []
-    let cursor = index.get(code)
-    while (cursor) {
-      chain.unshift(cursor.code)
-      cursor = cursor.parent ? index.get(cursor.parent) : null
+  const openSector = (code) => {
+    const kids = children.get(code) || []
+    if (kids.length) {
+      setPath([...ancestorsOf(byCode, code), code])
+      setSelected(null)
+    } else {
+      setPath(ancestorsOf(byCode, code))
+      setSelected(code)
     }
-    return chain
-  }
-  const jumpToSector = (code) => {
-    setMode('explore')
-    setPath(sectorPath(code))
     setQuery('')
   }
-  const normalizedQuery = query.trim().toLowerCase()
-  const searchResults = normalizedQuery.length < 2 ? [] : [...index.values()]
-    .filter((sector) => `${sector.code} ${sector.name}`.toLowerCase().includes(normalizedQuery))
-    .sort((left, right) => (right.raw?.fatturato_keur || 0) - (left.raw?.fatturato_keur || 0))
-    .slice(0, 8)
 
-  const crumbs = [{ label: 'Economia', i: 0 }]
-  path.forEach((code, i) => {
-    const s = index.get(code)
-    crumbs.push({ label: `${code} · ${s ? s.name : ''}`, i: i + 1 })
+  const clickHeader = (key) => {
+    setSort((current) => ({ key, dir: current.key === key && current.dir === 'desc' ? 'asc' : 'desc' }))
+  }
+
+  const crumbs = [{ label: 'Italia', length: 0 }]
+  path.forEach((code, index) => {
+    const sector = byCode.get(code)
+    crumbs.push({ label: `${code} · ${titleIt(sector?.name)}`, length: index + 1 })
   })
 
+  const selectedSector = selected ? byCode.get(selected) : null
+  const reading = rootReading(byCode, year)
+  const turnoverNote = data.meta.coverage.class_turnover[year]
+  const yearIndex = data.meta.years.indexOf(year)
+  const previousYear = yearIndex > 0 ? data.meta.years[yearIndex - 1] : null
+
   return (
-    <div className="app">
-      <aside className="side">
-        <div className="brand">
-          <span className="brand-mark">◆</span>
-          <span>Crystal</span>
-        </div>
-        <div className="side-label">Workspace</div>
-        <div className="modes">
-          <button className={'mode' + (mode === 'explore' ? ' on' : '')} onClick={() => setMode('explore')}>Panoramica</button>
-          <button className={'mode' + (mode === 'compare' ? ' on' : '')} onClick={() => setMode('compare')}>Confronta paesi</button>
-          <button className={'mode' + (mode === 'screener' ? ' on' : '')} onClick={() => setMode('screener')}>Screener</button>
-          <button className={'mode' + (mode === 'mercato' ? ' on' : '')} onClick={() => setMode('mercato')}>Mercato</button>
-        </div>
-        <div className="side-label">Percorso</div>
-        <div className="side-path">
-          <span>{m.country_name}</span>
-          <strong>{focus ? focus.name : 'Economia completa'}</strong>
-          <em>{focus ? `${focus.code} · ${focus.level}` : `${items.length} macro-settori`}</em>
-        </div>
-      </aside>
-
-      <main className="workspace">
-      <header className="topbar">
-        <div>
-          <h1>Crystal</h1>
-          <p>European economy intelligence · dal paese alla nicchia aziendale</p>
-        </div>
-        <div className="command">
-          <span>⌕</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca settore, codice o azienda media…" />
-          {searchResults.length > 0 && (
-            <div className="command-menu">
-              {searchResults.map((sector) => (
-                <button key={sector.code} onClick={() => jumpToSector(sector.code)}>
-                  <span>{sector.code}</span>
-                  <strong>{sector.name}</strong>
-                  <em>{sector.level}</em>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
-
-      {mode === 'compare' ? <CompareView />
-       : mode === 'screener' ? <ScreenerView data={data} country={country} countries={countries} />
-       : mode === 'mercato' ? <MarketView data={data} country={country} countries={countries} />
-       : (<>
-      <div className="subhead">
-        <select className="country-sel" value={country} onChange={(e) => setCountry(e.target.value)}>
-          {countries.map((c) => (<option key={c.code} value={c.code}>{c.name}</option>))}
-        </select>
-        <span className="year">dati {srcShort} · {m.latest_year} · {granLabel}</span>
-      </div>
-      <p className="tag">L'economia di <b>{m.country_name}</b>, settore per settore. Area = dimensione · colore = crescita (CAGR).</p>
-
-      <nav className="crumbs">
-        {crumbs.map((c, k) => (
-          <span key={k}>
-            {k > 0 && <span className="sep">▸</span>}
-            <button className={'crumb' + (k === crumbs.length - 1 ? ' here' : '')} onClick={() => toLevel(c.i)}>{c.label}</button>
-          </span>
-        ))}
-        <span className="count">{items.length} {items[0] ? (items.length > 1 ? LEVEL_PLURAL : LEVEL_LABEL)[items[0].level] : 'voci'}</span>
-      </nav>
-
-      <div className="controls">
-        <div className="ctl">
-          <span className="ctl-lbl">Vista</span>
-          {PRESETS.map((p) => (
-            <button key={p.id} data-preset={p.id} className={'chip' + (preset === p.id ? ' on' : '')} onClick={() => applyPreset(p)}>{p.label}</button>
-          ))}
-        </div>
-        <div className="ctl">
-          <span className="ctl-lbl">Area</span>
-          {Object.entries(VIEWS).map(([k, v]) => (
-            <button key={k} data-size={k} className={'chip sm' + (sizeKey === k ? ' on' : '')} onClick={() => setSizeKey(k)}>{v.label}</button>
-          ))}
-        </div>
-      </div>
-
-      {mode === 'explore' && focus && (
-        <SectorLens
-          focus={focus}
-          country={country}
-          lineage={crumbs}
-          directChildren={focusChildren}
-          leafDescendants={focusLeaves}
-          peerGroup={focusPeers}
-          sizeKey={view.sizeKey}
-          sizeLabel={view.label}
-          sizeFmt={(value) => (view.kind === 'money' ? fmtMoneyKeur(value) : fmtCount(value))}
-          onDrill={drill}
-          onNavigate={toLevel}
-          hasChildren={(code) => (childrenOf.get(code) || []).length > 0}
-        />
-      )}
-
-      <Treemap items={items} sizeKey={view.sizeKey} viewKind={view.kind} onDrill={drill} hasChildren={(code) => (childrenOf.get(code) || []).length > 0} />
-
-      <div className="legend">
-        <span>Area = <b>{view.label}</b></span>
-        <span className="gradient">
-          <i style={{ background: growthColor(-0.08) }} /><i style={{ background: growthColor(0) }} /><i style={{ background: growthColor(0.08) }} />
-          Colore = crescita CAGR (rosso −8% → verde +8%)
-        </span>
-        <span className="hint">clic su un riquadro o riga per scendere · clic intestazione per ordinare</span>
-      </div>
-
-      <div className="grid-wrap">
-      <table className="grid">
-        <thead>
-          <tr>
-            {COLS.map((c) => (
-              <th key={c.key} className={(c.key === 'name' ? 'l' : 'r') + (sort.key === c.key ? ' sorted' : '')}>
-                <span className="th-sort" onClick={() => clickHeader(c)}>{c.label}{sort.key === c.key ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}</span>
-                {c.key !== 'name' && <InfoDot text={METRICS[c.key].info} />}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((s) => {
-            const drillable = s.level !== 'class' && (childrenOf.get(s.code) || []).length > 0
-            return (
-              <tr key={s.code} data-code={s.code} className={drillable ? 'drillable' : ''} onClick={() => drillable && drill(s.code)}>
-                <td className="l"><span className="code">{s.code}</span> {s.name}</td>
-                {COLS.slice(1).map((c) => (
-                  <td key={c.key} className="r">{METRICS[c.key].fmt(METRICS[c.key].get(s))}</td>
+    <TooltipProvider>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10">
+        <header className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">Crystal</p>
+            <h1 className="text-3xl font-medium tracking-tight">Mappa dei settori italiani</h1>
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                spacing={0}
+                value={year}
+                onValueChange={(value) => { if (value) setYear(value) }}
+                aria-label="Anno"
+              >
+                {data.meta.years.map((item) => (
+                  <ToggleGroupItem key={item} value={item}>{item}</ToggleGroupItem>
                 ))}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      </div>
-      <Legend ids={ALL_METRIC_IDS} />
-      </>)}
+              </ToggleGroup>
+              <p className="text-sm text-muted-foreground">NACE Rev. 2 · ATECO 2007 · non ATECO 2025</p>
+            </div>
+            <ReadingGuide data={data} year={year} reading={reading} turnoverNote={turnoverNote} />
+          </div>
+        </header>
 
-      <footer className="foot">
-        <span>{m.source}</span>
-        <span>Valori monetari in € · CAGR sull'orizzonte disponibile · «—» = dato non disponibile (segreto statistico o non pubblicato). Italia a 4 cifre (ISTAT); resto d'Europa a 3 cifre (Eurostat).</span>
-      </footer>
+        <Breadcrumb>
+          <BreadcrumbList>
+            {crumbs.map((crumb, index) => {
+              const current = index === crumbs.length - 1
+              return (
+                <BreadcrumbItem key={crumb.length}>
+                  {index > 0 && <BreadcrumbSeparator />}
+                  {current ? (
+                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <button type="button" onClick={() => { setPath(path.slice(0, crumb.length)); setSelected(null); setQuery('') }}>
+                        {crumb.label}
+                      </button>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              )
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <KpiCard sector={focus} year={year} previousYear={previousYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
+
+        {(selectedSector || focusCode) && (
+          <InsightPanel
+            sector={selectedSector || focus}
+            parent={((selectedSector || focus).parent ? byCode.get((selectedSector || focus).parent) : null)}
+            siblings={children.get((selectedSector || focus).parent || '__root__') || []}
+            total={data.total}
+            year={year}
+            years={data.meta.years}
+            nuts={data.nuts}
+            byCode={byCode}
+          />
+        )}
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Panoramica</CardTitle>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <InfoIcon data-icon="inline-start" />
+                    Area e colore
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  L’area segue la metrica scelta. Il colore distingue la sezione e non è un giudizio. Il commercio (G) include la merce rivenduta: col fatturato, G occupa più spazio del valore creato.
+                </HoverCardContent>
+              </HoverCard>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              spacing={2}
+              value={sizeKey}
+              onValueChange={(value) => { if (value) setSizeKey(value) }}
+              aria-label="Metrica dell’area"
+              className="w-full flex-wrap justify-start"
+            >
+              {SIZE_METRICS.map((metric) => (
+                <ToggleGroupItem key={metric.id} value={metric.id}>{metric.label}</ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {sizeKey === 'NETTUR_MEUR' && (
+              <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area è più grande del valore creato.</p>
+            )}
+            <SbsTreemap items={rows} year={year} sizeKey={sizeKey} onOpen={openSector} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
+            <CardDescription>
+              {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
+              {normalizedQuery ? ` su ${rows.length}` : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <FieldGroup className="max-w-sm">
+              <Field>
+                <FieldLabel htmlFor="sector-search">Cerca in questo livello</FieldLabel>
+                <Input
+                  id="sector-search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Codice o nome, per esempio alimentari"
+                />
+              </Field>
+            </FieldGroup>
+            {globalHits.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Altrove nella mappa</span>
+                {globalHits.map((sector) => (
+                  <Button key={sector.code} variant="outline" size="sm" onClick={() => openSector(sector.code)}>
+                    {sector.code} · {titleIt(sector.name)}
+                  </Button>
+                ))}
+              </div>
+            )}
+            {sorted.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon"><SearchIcon /></EmptyMedia>
+                  <EmptyTitle>Nessuna voce</EmptyTitle>
+                  <EmptyDescription>Nessuna voce di questo livello corrisponde alla ricerca.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="sticky left-0 z-10 bg-card whitespace-normal" aria-sort={ariaSort(sort, 'name')}>
+                      <SortButton label="Settore" active={sort.key === 'name'} dir={sort.dir} onClick={() => clickHeader('name')} />
+                    </TableHead>
+                    {COLUMNS.map((column) => (
+                      <TableHead key={column.id} className="text-right" aria-sort={ariaSort(sort, column.id)}>
+                        <ColumnHeading column={column} sort={sort} onSort={() => clickHeader(column.id)} />
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sorted.map((sector) => {
+                    const kids = (children.get(sector.code) || []).length > 0
+                    const active = selected === sector.code
+                    return (
+                      <TableRow
+                        key={sector.code}
+                        data-state={active ? 'selected' : undefined}
+                        className="cursor-pointer"
+                        onClick={() => (kids ? openSector(sector.code) : setSelected(sector.code))}
+                      >
+                        <TableHead scope="row" className="sticky left-0 bg-card whitespace-normal">
+                          <span className="flex flex-col items-start gap-1">
+                            <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
+                            <span>{titleIt(sector.name)}</span>
+                            {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
+                          </span>
+                        </TableHead>
+                        {COLUMNS.map((column) => (
+                          <TableCell key={column.id} className="text-right tabular-nums">
+                            <CellValue cell={displayCell(sector, year, column)} />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+          {selectedSector && (
+            <CardContent>
+              <SectorNote sector={selectedSector} year={year} />
+            </CardContent>
+          )}
+        </Card>
+
+        <footer className="text-sm text-muted-foreground">
+          <a className="text-primary underline-offset-4 hover:underline" href={data.meta.source_url}>Eurostat sbs_ovw_act</a>
+          {' · '}
+          <a className="text-primary underline-offset-4 hover:underline" href="https://www.istat.it/">ISTAT</a>
+          {' · '}
+          aggiornamento {data.meta.last_update_label}
+        </footer>
       </main>
+    </TooltipProvider>
+  )
+}
+
+function LoadingState() {
+  return (
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-8">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-12 w-full max-w-xl" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-24" />)}
+      </div>
+      <p className="text-sm text-muted-foreground">Carico i conti delle imprese italiane…</p>
+    </main>
+  )
+}
+
+function ariaSort(sort, key) {
+  if (sort.key !== key) return 'none'
+  return sort.dir === 'asc' ? 'ascending' : 'descending'
+}
+
+function mark(dir) {
+  return dir === 'desc' ? '↓' : '↑'
+}
+
+function definitionFor(column) {
+  const direct = GLOSSARY.find((item) => item.code === column.id)
+  if (direct) return direct.body
+  if (column.derived) return GLOSSARY.find((item) => item.code === 'calcolati')?.body || null
+  return null
+}
+
+function SortButton({ label, active, dir, onClick, detail }) {
+  return (
+    <Button variant="ghost" size="sm" onClick={onClick} className="h-auto px-1">
+      <span className="flex flex-col items-start gap-0.5 text-left">
+        <span>{label}{active ? ` ${mark(dir)}` : ''}</span>
+        {detail && <span className="text-xs font-normal text-muted-foreground">{detail}</span>}
+      </span>
+    </Button>
+  )
+}
+
+function ColumnHeading({ column, sort, onSort }) {
+  const definition = definitionFor(column)
+  const detail = `${column.unit}${column.derived ? ' · calcolato' : ''}`
+  const button = (
+    <SortButton
+      label={column.label}
+      detail={detail}
+      active={sort.key === column.id}
+      dir={sort.dir}
+      onClick={onSort}
+    />
+  )
+  if (!definition) return <div className="flex justify-end">{button}</div>
+  return (
+    <div className="flex justify-end">
+      <HoverCard>
+        <HoverCardTrigger asChild>{button}</HoverCardTrigger>
+        <HoverCardContent className="w-80" align="end">{definition}</HoverCardContent>
+      </HoverCard>
     </div>
+  )
+}
+
+function CellValue({ cell }) {
+  if (cell.kind === 'reserved') return <Badge variant="outline">riservato</Badge>
+  if (cell.kind === 'unpublished') return <Badge variant="secondary">non pubblicato</Badge>
+  if (cell.kind === 'missing') return <span className="text-muted-foreground">n.d.</span>
+  return (
+    <span className="inline-flex items-center justify-end gap-1.5">
+      <span>{cell.text}</span>
+      {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
+    </span>
+  )
+}
+
+function KpiCard({ sector, year, previousYear, isTotal, totalCode }) {
+  return (
+    <section className="flex flex-col gap-4" aria-label="Indicatori del livello corrente">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h2 className="text-xl font-medium tracking-tight">
+          {isTotal ? 'Italia' : `${sector.code} · ${titleIt(sector.name)}`}
+        </h2>
+        {isTotal && <Badge variant="outline">{totalCode}</Badge>}
+        {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
+      </div>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+        {KPI_IDS.map((id) => {
+          const column = columnById(id)
+          const cell = displayCell(sector, year, column)
+          const variation = previousYear
+            ? formatVariation(publishedValue(sector, year, id), publishedValue(sector, previousYear, id))
+            : null
+          const numeric = cell.kind === 'value' || cell.kind === 'estimated'
+          return (
+            <Card key={id} size="sm">
+              <CardHeader>
+                <CardDescription>
+                  <TermHint column={column} />
+                </CardDescription>
+                <CardTitle>
+                  {numeric ? (
+                    <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
+                  ) : (
+                    <CellValue cell={cell} />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {(variation || (numeric && column.unit !== '%') || cell.kind === 'estimated') && (
+                <CardContent className="flex flex-wrap items-center gap-2">
+                  {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
+                  {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
+                  {variation && <Badge variant="outline">vs {previousYear}: {variation}</Badge>}
+                </CardContent>
+              )}
+            </Card>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function TermHint({ column }) {
+  const definition = definitionFor(column)
+  if (!definition) return column.label
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <button type="button" className="text-left underline-offset-4 hover:underline">{column.label}</button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-72">{definition}</HoverCardContent>
+    </HoverCard>
+  )
+}
+
+function ReadingGuide({ data, year, reading, turnoverNote }) {
+  return (
+    <Collapsible className="flex flex-col items-start gap-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" size="sm">
+          <InfoIcon data-icon="inline-start" />
+          Come leggere i dati
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="w-full">
+        <div className="flex max-w-3xl flex-col gap-4 rounded-xl bg-muted/50 p-4">
+          <p>{data.meta.classification_note} I titoli sono quelli italiani di ATECO 2007.</p>
+          <p>
+            Mancano le sezioni A (agricoltura) e O (pubblica amministrazione). S non ha il totale di sezione; alcune divisioni sì.
+            K ha imprese e addetti, i conti di bilancio sono riservati. Il totale è l’aggregato {data.meta.total_code}.
+            La classe di addetti (sbs_sc_ovw) arriva al gruppo. Le regioni (sbs_r_nuts2021) arrivano alla divisione e contano le unità locali, non i conti nazionali.
+          </p>
+          <p>
+            Nel {year} il fatturato di classe è pubblicato per {turnoverNote.published} classi, riservato per {turnoverNote.reserved}, assente per {turnoverNote.absent}.
+            «Riservato» non è zero. I rapporti segnati come calcolati usano solo valori ufficiali pubblicati.
+          </p>
+          {reading.length > 0 && <Separator />}
+          {reading.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          <Separator />
+          <div className="flex flex-col gap-3">
+            {GLOSSARY.map((item) => (
+              <div key={item.title} className="flex flex-col gap-1">
+                <p className="font-medium">{item.title}</p>
+                <p className="text-sm text-muted-foreground">{item.body}</p>
+              </div>
+            ))}
+          </div>
+          <Separator />
+          <p className="text-sm text-muted-foreground">
+            {data.meta.producer_note} {data.meta.total_name}. {data.meta.total_name_en}. Questi conti descrivono la struttura. Non sono un consiglio di investimento.
+          </p>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+function withUnit(cell, unit) {
+  if (cell.kind === 'value' || cell.kind === 'estimated' || cell.kind === 'calculated') {
+    return unit === '%' ? `${cell.text}%` : `${cell.text} ${unit}`
+  }
+  return cell.text
+}
+
+function SectorNote({ sector, year }) {
+  const turnover = displayCell(sector, year, columnById('NETTUR_MEUR'))
+  const valueAdded = displayCell(sector, year, columnById('AV_MEUR'))
+  const gor = displayCell(sector, year, columnById('GOR_PC'))
+  const firms = displayCell(sector, year, columnById('ENT_NR'))
+  return (
+    <Alert>
+      <AlertTitle>{sector.code} · {titleIt(sector.name)}</AlertTitle>
+      <AlertDescription>
+        {year} · {firms.text} imprese · fatturato {withUnit(turnover, 'mln €')} · valore aggiunto {withUnit(valueAdded, 'mln €')} · GOR {withUnit(gor, '%')}
+      </AlertDescription>
+    </Alert>
   )
 }

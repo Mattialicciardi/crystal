@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Crystal — build statica + deploy su GitHub Pages (branch gh-pages).
-# Usa il sectors.json già versionato in web/public (NON rigenera dai dati ISTAT:
-# per aggiornare i dati al nuovo rilascio ISTAT, lancia prima la pipeline —
-#   python3 pipeline/fetch_istat.py && python3 pipeline/build.py — poi committa).
+# Crystal — build statica + deploy su GitHub Pages.
+# Il sito pubblico resta https://mattialicciardi.github.io/crystal/
+# GitHub Pages serve il branch gh-pages dalla radice. Vite usa base './',
+# quindi gli asset restano relativi al project site.
+# I conti SBS Italia sono già in web/public/sbs-it.json.
+# Per rigenerarli dall'estratto Eurostat:
+#   python3 pipeline/build_sbs_it.py
 set -euo pipefail
 cd "$(dirname "$0")"
 
