@@ -17,12 +17,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import InsightPanel from './components/InsightPanel.jsx'
+import SectorTable from './components/SectorTable.jsx'
 import SbsTreemap from './components/SbsTreemap.jsx'
 import {
   COLUMNS,
@@ -33,11 +34,16 @@ import {
   LEVEL_PLURAL,
   SIZE_METRICS,
   ancestorsOf,
+  collectDescendants,
+  collectLevel,
   columnById,
   displayCell,
   indexDataset,
   formatVariation,
+  levelsBelow,
+  matchesView,
   normalize,
+  parseBound,
   publishedValue,
   rootReading,
   sortSectors,
@@ -54,7 +60,17 @@ export default function App() {
   const [sizeKey, setSizeKey] = useState(DEFAULT_SIZE)
   const [sort, setSort] = useState({ key: 'AV_MEUR', dir: 'desc' })
   const [query, setQuery] = useState('')
+  const [sectionFilter, setSectionFilter] = useState('all')
+  const [rowLevel, setRowLevel] = useState('auto')
+  const [publishedOnly, setPublishedOnly] = useState(false)
+  const [minText, setMinText] = useState('')
+  const [maxText, setMaxText] = useState('')
   const [selected, setSelected] = useState(null)
+
+  useEffect(() => {
+    setRowLevel('auto')
+    setSectionFilter('all')
+  }, [path])
 
   useEffect(() => {
     fetch(`${BASE}sbs-it.json`)
@@ -84,16 +100,29 @@ export default function App() {
   const { byCode, children } = indexed
   const focusCode = path.length ? path[path.length - 1] : null
   const focus = focusCode ? byCode.get(focusCode) : data.total
-  const rows = children.get(focusCode || '__root__') || []
+  const levelOptions = levelsBelow(focusCode ? focus.level : null)
+  const activeLevel = rowLevel !== 'auto' && levelOptions.includes(rowLevel) ? rowLevel : levelOptions[0]
+  const levelRows = activeLevel ? collectLevel(children, focusCode, activeLevel) : []
   const normalizedQuery = normalize(query.trim())
-  const filtered = normalizedQuery
-    ? rows.filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
-    : rows
+  const searchPool = normalizedQuery && rowLevel === 'auto'
+    ? collectDescendants(children, focusCode)
+    : levelRows
+  const sectionOptions = [...new Set(levelRows.map((sector) => sector.section))].sort()
+  const sizeColumn = columnById(sizeKey)
+  const filtered = searchPool.filter((sector) => matchesView(sector, {
+    year,
+    column: sizeColumn,
+    query: normalizedQuery,
+    section: sectionFilter,
+    publishedOnly,
+    min: parseBound(minText),
+    max: parseBound(maxText),
+  }))
   const sorted = sortSectors(filtered, year, sort)
-  const level = sorted[0]?.level || rows[0]?.level
+  const level = sorted.length && sorted.every((sector) => sector.level === sorted[0].level) ? sorted[0].level : activeLevel
   const globalHits = normalizedQuery.length < 2 ? [] : data.sectors
     .filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
-    .filter((sector) => !rows.some((row) => row.code === sector.code))
+    .filter((sector) => !searchPool.some((row) => row.code === sector.code))
     .slice(0, 6)
 
   const openSector = (code) => {
@@ -217,14 +246,73 @@ export default function App() {
               aria-label="Metrica dell’area"
               className="w-full flex-wrap justify-start"
             >
-              {SIZE_METRICS.map((metric) => (
+              {SIZE_METRICS.map((metric) => metric.rate ? (
+                <HoverCard key={metric.id}>
+                  <HoverCardTrigger asChild>
+                    <ToggleGroupItem value={metric.id}>{metric.label}</ToggleGroupItem>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72">
+                    Rapporto calcolato, non un totale. L’area confronta la retribuzione media per addetto. Non è il costo del lavoro per addetto.
+                  </HoverCardContent>
+                </HoverCard>
+              ) : (
                 <ToggleGroupItem key={metric.id} value={metric.id}>{metric.label}</ToggleGroupItem>
               ))}
             </ToggleGroup>
+            <div className="flex flex-wrap items-end gap-3">
+              <Field className="w-56">
+                <FieldLabel htmlFor="map-search">Cerca</FieldLabel>
+                <Input id="map-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Codice o nome" />
+              </Field>
+              <Field className="w-40">
+                <FieldLabel>Sezione</FieldLabel>
+                <Select value={sectionOptions.includes(sectionFilter) || sectionFilter === 'all' ? sectionFilter : 'all'} onValueChange={setSectionFilter}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Tutte" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="all">Tutte</SelectItem>
+                      {sectionOptions.map((section) => (
+                        <SelectItem key={section} value={section}>{section}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {levelOptions.length > 1 && (
+                <Field className="w-44">
+                  <FieldLabel>Livello</FieldLabel>
+                  <Select value={rowLevel === 'auto' ? 'auto' : activeLevel} onValueChange={setRowLevel}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="auto">Livello attuale</SelectItem>
+                        {levelOptions.map((item) => (
+                          <SelectItem key={item} value={item}>{LEVEL_PLURAL[item]}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+              <Button type="button" size="sm" variant={publishedOnly ? 'secondary' : 'outline'} onClick={() => setPublishedOnly((current) => !current)}>
+                Solo pubblicati
+              </Button>
+              <Field className="w-28">
+                <FieldLabel htmlFor="metric-min">Min {sizeColumn?.unit}</FieldLabel>
+                <Input id="metric-min" inputMode="decimal" value={minText} onChange={(event) => setMinText(event.target.value)} placeholder="min" />
+              </Field>
+              <Field className="w-28">
+                <FieldLabel htmlFor="metric-max">Max {sizeColumn?.unit}</FieldLabel>
+                <Input id="metric-max" inputMode="decimal" value={maxText} onChange={(event) => setMaxText(event.target.value)} placeholder="max" />
+              </Field>
+            </div>
             {sizeKey === 'NETTUR_MEUR' && (
               <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area è più grande del valore creato.</p>
             )}
-            <SbsTreemap items={rows} year={year} sizeKey={sizeKey} onOpen={openSector} />
+            {sizeColumn?.rate && (
+              <p className="text-sm text-muted-foreground">Rapporto calcolato: l’area non è un totale del settore.</p>
+            )}
+            <SbsTreemap items={filtered} year={year} sizeKey={sizeKey} onOpen={openSector} />
           </CardContent>
         </Card>
 
@@ -233,21 +321,10 @@ export default function App() {
             <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
             <CardDescription>
               {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
-              {normalizedQuery ? ` su ${rows.length}` : ''}
+              {normalizedQuery ? ` su ${searchPool.length}` : ''}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <FieldGroup className="max-w-sm">
-              <Field>
-                <FieldLabel htmlFor="sector-search">Cerca in questo livello</FieldLabel>
-                <Input
-                  id="sector-search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Codice o nome, per esempio alimentari"
-                />
-              </Field>
-            </FieldGroup>
             {globalHits.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">Altrove nella mappa</span>
@@ -263,51 +340,19 @@ export default function App() {
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><SearchIcon /></EmptyMedia>
                   <EmptyTitle>Nessuna voce</EmptyTitle>
-                  <EmptyDescription>Nessuna voce di questo livello corrisponde alla ricerca.</EmptyDescription>
+                  <EmptyDescription>Nessun settore corrisponde ai filtri.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 z-10 bg-card whitespace-normal" aria-sort={ariaSort(sort, 'name')}>
-                      <SortButton label="Settore" active={sort.key === 'name'} dir={sort.dir} onClick={() => clickHeader('name')} />
-                    </TableHead>
-                    {COLUMNS.map((column) => (
-                      <TableHead key={column.id} className="text-right" aria-sort={ariaSort(sort, column.id)}>
-                        <ColumnHeading column={column} sort={sort} onSort={() => clickHeader(column.id)} />
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sorted.map((sector) => {
-                    const kids = (children.get(sector.code) || []).length > 0
-                    const active = selected === sector.code
-                    return (
-                      <TableRow
-                        key={sector.code}
-                        data-state={active ? 'selected' : undefined}
-                        className="cursor-pointer"
-                        onClick={() => (kids ? openSector(sector.code) : setSelected(sector.code))}
-                      >
-                        <TableHead scope="row" className="sticky left-0 bg-card whitespace-normal">
-                          <span className="flex flex-col items-start gap-1">
-                            <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
-                            <span>{titleIt(sector.name)}</span>
-                            {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
-                          </span>
-                        </TableHead>
-                        {COLUMNS.map((column) => (
-                          <TableCell key={column.id} className="text-right tabular-nums">
-                            <CellValue cell={displayCell(sector, year, column)} />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+              <SectorTable
+                rows={sorted}
+                year={year}
+                sort={sort}
+                onSort={clickHeader}
+                selected={selected}
+                childrenOf={children}
+                onOpen={(sector, kids) => (kids ? openSector(sector.code) : setSelected(sector.code))}
+              />
             )}
           </CardContent>
           {selectedSector && (
@@ -342,54 +387,11 @@ function LoadingState() {
   )
 }
 
-function ariaSort(sort, key) {
-  if (sort.key !== key) return 'none'
-  return sort.dir === 'asc' ? 'ascending' : 'descending'
-}
-
-function mark(dir) {
-  return dir === 'desc' ? '↓' : '↑'
-}
-
 function definitionFor(column) {
   const direct = GLOSSARY.find((item) => item.code === column.id)
   if (direct) return direct.body
   if (column.derived) return GLOSSARY.find((item) => item.code === 'calcolati')?.body || null
   return null
-}
-
-function SortButton({ label, active, dir, onClick, detail }) {
-  return (
-    <Button variant="ghost" size="sm" onClick={onClick} className="h-auto px-1">
-      <span className="flex flex-col items-start gap-0.5 text-left">
-        <span>{label}{active ? ` ${mark(dir)}` : ''}</span>
-        {detail && <span className="text-xs font-normal text-muted-foreground">{detail}</span>}
-      </span>
-    </Button>
-  )
-}
-
-function ColumnHeading({ column, sort, onSort }) {
-  const definition = definitionFor(column)
-  const detail = `${column.unit}${column.derived ? ' · calcolato' : ''}`
-  const button = (
-    <SortButton
-      label={column.label}
-      detail={detail}
-      active={sort.key === column.id}
-      dir={sort.dir}
-      onClick={onSort}
-    />
-  )
-  if (!definition) return <div className="flex justify-end">{button}</div>
-  return (
-    <div className="flex justify-end">
-      <HoverCard>
-        <HoverCardTrigger asChild>{button}</HoverCardTrigger>
-        <HoverCardContent className="w-80" align="end">{definition}</HoverCardContent>
-      </HoverCard>
-    </div>
-  )
 }
 
 function CellValue({ cell }) {
