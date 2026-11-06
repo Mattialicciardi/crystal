@@ -11,6 +11,17 @@ export const COLUMNS = [
   { id: 'GOS_MEUR', label: 'MOL', unit: 'mln €', digits: 2, treemap: true },
   { id: 'GRSINV_TNCA_MEUR', label: 'Investimenti', unit: 'mln €', digits: 2, treemap: true },
   { id: 'LC_EMP_TEUR', label: 'Costo lavoro / addetto', unit: 'mila €', digits: 2 },
+  {
+    id: 'wage_per_employee',
+    label: 'Retribuzioni / addetto',
+    unit: 'mila €',
+    digits: 2,
+    derived: true,
+    computed: true,
+    treemap: true,
+    rate: true,
+    needs: ['WAGE_MEUR', 'EMP_NR'],
+  },
   { id: 'NETTUR_EMP_TEUR', label: 'Fatturato / addetto', unit: 'mila €', digits: 2 },
   { id: 'GOR_PC', label: 'GOR', unit: '%', digits: 2 },
   { id: 'fatturato_per_impresa_eur', label: 'Fatturato / impresa', unit: '€', digits: 0, derived: true, needs: ['NETTUR_MEUR', 'ENT_NR'] },
@@ -21,6 +32,60 @@ export const COLUMNS = [
 export const SIZE_METRICS = COLUMNS.filter((column) => column.treemap)
 export const DEFAULT_SIZE = 'AV_MEUR'
 export const KPI_IDS = COLUMNS.filter((column) => !column.derived).map((column) => column.id)
+
+export const LEVEL_SEQUENCE = ['section', 'division', 'group', 'class']
+
+export function levelsBelow(parentLevel) {
+  const start = parentLevel ? LEVEL_SEQUENCE.indexOf(parentLevel) + 1 : 0
+  if (start < 0 || start >= LEVEL_SEQUENCE.length) return []
+  return LEVEL_SEQUENCE.slice(start)
+}
+
+export function collectDescendants(childrenOf, rootCode) {
+  const out = []
+  const stack = [...(childrenOf.get(rootCode || '__root__') || [])]
+  while (stack.length) {
+    const node = stack.pop()
+    out.push(node)
+    for (const kid of childrenOf.get(node.code) || []) stack.push(kid)
+  }
+  out.sort((left, right) => left.code.localeCompare(right.code, 'it'))
+  return out
+}
+
+export function collectLevel(childrenOf, rootCode, level) {
+  const out = []
+  const stack = [...(childrenOf.get(rootCode || '__root__') || [])]
+  while (stack.length) {
+    const node = stack.pop()
+    if (node.level === level) out.push(node)
+    else {
+      const kids = childrenOf.get(node.code) || []
+      for (const kid of kids) stack.push(kid)
+    }
+  }
+  out.sort((left, right) => left.code.localeCompare(right.code, 'it'))
+  return out
+}
+
+export function parseBound(text) {
+  if (text == null || String(text).trim() === '') return null
+  const value = Number(String(text).trim().replace(',', '.'))
+  return Number.isFinite(value) ? value : null
+}
+
+export function matchesView(sector, { year, column, query, section, publishedOnly, min, max }) {
+  if (section && section !== 'all' && sector.section !== section) return false
+  if (query) {
+    const haystack = normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`)
+    if (!haystack.includes(query)) return false
+  }
+  const value = column ? compareValue(sector, year, column) : null
+  if ((publishedOnly || min != null || max != null) && value == null) return false
+  if (min != null && value < min) return false
+  if (max != null && value > max) return false
+  return true
+}
 
 export const LEVEL_LABEL = {
   section: 'sezione',
@@ -133,8 +198,24 @@ export function ancestorsOf(byCode, code) {
   return chain
 }
 
+export function wagePerEmployee(sector, year) {
+  if (!sector?.published) return { kind: 'unpublished' }
+  const row = sector.years?.[year] || {}
+  const wage = row.WAGE_MEUR
+  const employed = row.EMP_NR
+  if (wage?.s === 'c' || employed?.s === 'c') return { kind: 'reserved' }
+  if (wage?.s === 'e' || employed?.s === 'e') return { kind: 'unavailable' }
+  if (!wage || !employed || wage.v == null || employed.v == null) return { kind: 'missing' }
+  if (!(employed.v > 0)) return { kind: 'unavailable' }
+  return { kind: 'calculated', value: (Number(wage.v) * 1000) / Number(employed.v) }
+}
+
 function rawNumber(sector, year, column) {
   if (!sector?.published) return null
+  if (column?.id === 'wage_per_employee') {
+    const result = wagePerEmployee(sector, year)
+    return result.kind === 'calculated' ? result.value : null
+  }
   const row = sector.years?.[year]
   if (!row) return null
   if (column.derived) {
@@ -148,6 +229,12 @@ function rawNumber(sector, year, column) {
 
 export function displayCell(sector, year, column) {
   if (!sector?.published) return { text: 'non pubblicato', kind: 'unpublished' }
+  if (column.id === 'wage_per_employee') {
+    const result = wagePerEmployee(sector, year)
+    if (result.kind === 'calculated') return { text: formatNumber(result.value, column.digits), kind: 'calculated' }
+    if (result.kind === 'reserved') return { text: 'riservato', kind: 'reserved' }
+    return { text: 'n.d.', kind: 'missing' }
+  }
   const row = sector.years?.[year] || {}
   if (column.derived) {
     const derived = row.derived || {}
@@ -262,6 +349,11 @@ export const GLOSSARY = [
     title: 'Retribuzioni',
     code: 'WAGE_MEUR',
     body: 'Salari e stipendi, in milioni di euro. Non sono il costo del lavoro completo: i contributi a carico del datore, per esempio, stanno nel costo del lavoro per addetto.',
+  },
+  {
+    title: 'Retribuzioni / addetto',
+    code: 'wage_per_employee',
+    body: 'Retribuzione media per addetto, in migliaia di euro. È calcolata dalle retribuzioni e dagli addetti ufficiali. Non è il costo del lavoro per addetto: quel conto include anche i contributi.',
   },
   {
     title: 'MOL',
