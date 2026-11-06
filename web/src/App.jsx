@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import InsightPanel from './components/InsightPanel.jsx'
 import SbsTreemap from './components/SbsTreemap.jsx'
 import {
   COLUMNS,
@@ -35,8 +36,9 @@ import {
   columnById,
   displayCell,
   indexDataset,
-  kpiVariation,
+  formatVariation,
   normalize,
+  publishedValue,
   rootReading,
   sortSectors,
   titleIt,
@@ -119,7 +121,8 @@ export default function App() {
   const selectedSector = selected ? byCode.get(selected) : null
   const reading = rootReading(byCode, year)
   const turnoverNote = data.meta.coverage.class_turnover[year]
-  const otherYear = year === '2023' ? '2024' : '2023'
+  const yearIndex = data.meta.years.indexOf(year)
+  const previousYear = yearIndex > 0 ? data.meta.years[yearIndex - 1] : null
 
   return (
     <TooltipProvider>
@@ -171,7 +174,20 @@ export default function App() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <KpiCard sector={focus} year={year} otherYear={otherYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
+        <KpiCard sector={focus} year={year} previousYear={previousYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
+
+        {(selectedSector || focusCode) && (
+          <InsightPanel
+            sector={selectedSector || focus}
+            parent={((selectedSector || focus).parent ? byCode.get((selectedSector || focus).parent) : null)}
+            siblings={children.get((selectedSector || focus).parent || '__root__') || []}
+            total={data.total}
+            year={year}
+            years={data.meta.years}
+            nuts={data.nuts}
+            byCode={byCode}
+          />
+        )}
 
         <Card>
           <CardHeader>
@@ -388,7 +404,7 @@ function CellValue({ cell }) {
   )
 }
 
-function KpiCard({ sector, year, otherYear, isTotal, totalCode }) {
+function KpiCard({ sector, year, previousYear, isTotal, totalCode }) {
   return (
     <section className="flex flex-col gap-4" aria-label="Indicatori del livello corrente">
       <div className="flex flex-wrap items-baseline gap-3">
@@ -402,7 +418,9 @@ function KpiCard({ sector, year, otherYear, isTotal, totalCode }) {
         {KPI_IDS.map((id) => {
           const column = columnById(id)
           const cell = displayCell(sector, year, column)
-          const variation = kpiVariation(sector, year, column)
+          const variation = previousYear
+            ? formatVariation(publishedValue(sector, year, id), publishedValue(sector, previousYear, id))
+            : null
           const numeric = cell.kind === 'value' || cell.kind === 'estimated'
           return (
             <Card key={id} size="sm">
@@ -422,7 +440,7 @@ function KpiCard({ sector, year, otherYear, isTotal, totalCode }) {
                 <CardContent className="flex flex-wrap items-center gap-2">
                   {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
                   {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
-                  {variation && <Badge variant="outline">nel {otherYear}: {variation}</Badge>}
+                  {variation && <Badge variant="outline">vs {previousYear}: {variation}</Badge>}
                 </CardContent>
               )}
             </Card>
@@ -461,6 +479,7 @@ function ReadingGuide({ data, year, reading, turnoverNote }) {
           <p>
             Mancano le sezioni A (agricoltura) e O (pubblica amministrazione). S non ha il totale di sezione; alcune divisioni sì.
             K ha imprese e addetti, i conti di bilancio sono riservati. Il totale è l’aggregato {data.meta.total_code}.
+            La classe di addetti (sbs_sc_ovw) arriva al gruppo. Le regioni (sbs_r_nuts2021) arrivano alla divisione e contano le unità locali, non i conti nazionali.
           </p>
           <p>
             Nel {year} il fatturato di classe è pubblicato per {turnoverNote.published} classi, riservato per {turnoverNote.reserved}, assente per {turnoverNote.absent}.

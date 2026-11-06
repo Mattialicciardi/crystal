@@ -23,12 +23,39 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = ROOT / "data" / "sbs" / "sbs_ovw_act_IT.csv"
+EU_PATH = ROOT / "data" / "sbs" / "sbs_ovw_act_EU27.csv"
+SIZE_PATH = ROOT / "data" / "sbs" / "sbs_sc_ovw_IT.csv"
+NUTS_PATH = ROOT / "data" / "sbs" / "sbs_r_nuts2021_IT.csv"
 LABELS_PATH = ROOT / "data" / "sbs" / "ateco2007_it.json"
 OUT_PATH = ROOT / "web" / "public" / "sbs-it.json"
 
 TOTAL_CODE = "B-S_X_O_S94"
-YEARS = ("2023", "2024")
+YEARS = ("2021", "2022", "2023", "2024")
 INDICATORS = (
+    "ENT_NR",
+    "EMP_NR",
+    "SAL_NR",
+    "SAL_FTE_NR",
+    "HW_NR",
+    "NETTUR_MEUR",
+    "VAL_OUT_MEUR",
+    "PUR_MEUR",
+    "PUR_RS_MEUR",
+    "PUR_AGN_MEUR",
+    "PUR_NRG_MEUR",
+    "GM_GD_RS_MEUR",
+    "AV_MEUR",
+    "WAGE_MEUR",
+    "EXPN_SAL_BEN_MEUR",
+    "SS_COST_MEUR",
+    "GOS_MEUR",
+    "GRSINV_TNCA_MEUR",
+    "GRSINV_MAC_MEUR",
+    "LC_EMP_TEUR",
+    "NETTUR_EMP_TEUR",
+    "GOR_PC",
+)
+EU_INDICATORS = (
     "ENT_NR",
     "EMP_NR",
     "NETTUR_MEUR",
@@ -36,11 +63,34 @@ INDICATORS = (
     "AV_MEUR",
     "WAGE_MEUR",
     "GOS_MEUR",
-    "GRSINV_TNCA_MEUR",
-    "LC_EMP_TEUR",
-    "NETTUR_EMP_TEUR",
     "GOR_PC",
 )
+SIZE_INDICATORS = ("ENT_NR", "EMP_NR", "NETTUR_MEUR", "AV_MEUR")
+SIZE_CLASSES = ("0-9", "10-19", "20-49", "50-249", "GE250")
+NUTS_INDICATORS = ("LOC_NR", "EMP_LOC_NR", "WAGE_LOC_MEUR", "LC_EMP_LOC_TEUR")
+NUTS_NAMES = {
+    "ITC1": "Piemonte",
+    "ITC2": "Valle d'Aosta",
+    "ITC3": "Liguria",
+    "ITC4": "Lombardia",
+    "ITH1": "Bolzano",
+    "ITH2": "Trento",
+    "ITH3": "Veneto",
+    "ITH4": "Friuli-Venezia Giulia",
+    "ITH5": "Emilia-Romagna",
+    "ITI1": "Toscana",
+    "ITI2": "Umbria",
+    "ITI3": "Marche",
+    "ITI4": "Lazio",
+    "ITF1": "Abruzzo",
+    "ITF2": "Molise",
+    "ITF3": "Campania",
+    "ITF4": "Puglia",
+    "ITF5": "Basilicata",
+    "ITF6": "Calabria",
+    "ITG1": "Sicilia",
+    "ITG2": "Sardegna",
+}
 # Rapporti non pubblicati da Eurostat. Gli indicatori ufficiali riservati
 # (GOR, fatturato/addetto, costo del lavoro/addetto) non vengono ricalcolati.
 DERIVED = {
@@ -91,11 +141,13 @@ def load_labels() -> dict[str, str]:
     return labels
 
 
-def load_rows() -> list[dict[str, str]]:
-    with CSV_PATH.open(encoding="utf-8", newline="") as handle:
+def load_rows(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        raise SystemExit(f"Manca {path}. Lancia python3 pipeline/fetch_sbs_layers.py")
+    with path.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
     if not rows:
-        raise SystemExit(f"CSV vuoto: {CSV_PATH}")
+        raise SystemExit(f"CSV vuoto: {path}")
     return rows
 
 
@@ -146,9 +198,88 @@ def year_payload(indicators: dict) -> dict:
     return out
 
 
+def nest_cells(rows: list[dict[str, str]], key_fields: tuple[str, ...], allowed: tuple[str, ...]) -> dict:
+    """Chiave composta -> indicatore -> cella. Le celle vuote non riservate fermano la build."""
+    out: dict = {}
+    for row in rows:
+        if row["indic_sbs"] not in allowed:
+            continue
+        if row["TIME_PERIOD"] not in YEARS:
+            continue
+        cursor = out
+        for field in key_fields:
+            cursor = cursor.setdefault(row[field], {})
+        year_bucket = cursor.setdefault(row["TIME_PERIOD"], {})
+        if row["indic_sbs"] in year_bucket:
+            raise SystemExit(f"Duplicato {row['indic_sbs']} {row['TIME_PERIOD']}")
+        year_bucket[row["indic_sbs"]] = cell_from_row(row)
+    return out
+
+
+def attach_eu(sectors: list[dict], total: dict, rows: list[dict[str, str]]) -> str:
+    nested = nest_cells(rows, ("nace_r2",), EU_INDICATORS)
+    last = sorted({row["LAST UPDATE"] for row in rows})[0]
+    for node in sectors + [total]:
+        series = nested.get(node["code"])
+        if not series:
+            continue
+        node["eu"] = {year: series.get(year, {}) for year in YEARS if series.get(year)}
+    return last
+
+
+def attach_size(sectors: list[dict], total: dict, rows: list[dict[str, str]]) -> tuple[str, dict]:
+    nested = nest_cells(rows, ("nace_r2", "size_emp"), SIZE_INDICATORS)
+    last = sorted({row["LAST UPDATE"] for row in rows})[0]
+    levels = {"section": 0, "division": 0, "group": 0, "class": 0, "aggregate": 0}
+    for node in sectors + [total]:
+        by_size = nested.get(node["code"])
+        if not by_size:
+            continue
+        level = node.get("level") or "aggregate"
+        levels[level] = levels.get(level, 0) + 1
+        payload = {}
+        for size_code, years in by_size.items():
+            if size_code not in SIZE_CLASSES:
+                continue
+            for year, indicators in years.items():
+                payload.setdefault(year, {})[size_code] = indicators
+        if payload:
+            node["size"] = payload
+    return last, levels
+
+
+def build_nuts(rows: list[dict[str, str]]) -> dict:
+    nested = nest_cells(rows, ("nace_r2", "geo"), NUTS_INDICATORS)
+    last = sorted({row["LAST UPDATE"] for row in rows})[0]
+    areas = []
+    seen = []
+    for row in rows:
+        if row["geo"] not in seen:
+            seen.append(row["geo"])
+    for code in sorted(seen):
+        areas.append({"code": code, "name": NUTS_NAMES.get(code, code)})
+    levels = {"section": 0, "division": 0, "group": 0, "class": 0, "aggregate": 0}
+    for code in nested:
+        level = level_of(code) or "aggregate"
+        levels[level] = levels.get(level, 0) + 1
+    return {
+        "dataset": "sbs_r_nuts2021",
+        "last_update": last,
+        "source_url": "https://ec.europa.eu/eurostat/databrowser/view/sbs_r_nuts2021/default/table?lang=en",
+        "note": (
+            "Unità locali per regione NUTS 2. Non sono i conti nazionali delle imprese: "
+            "gli addetti e le retribuzioni si riferiscono alle unità locali."
+        ),
+        "nace_levels": levels,
+        "indicators": list(NUTS_INDICATORS),
+        "areas": areas,
+        "series": nested,
+    }
+
+
 def build() -> dict:
     labels = load_labels()
-    rows = load_rows()
+    rows = load_rows(CSV_PATH)
     last_updates = sorted({row["LAST UPDATE"] for row in rows})
     if len(last_updates) != 1:
         raise SystemExit(f"Aggiornamenti dataset non univoci: {last_updates}")
@@ -277,6 +408,39 @@ def build() -> dict:
             "years": by_code_years[TOTAL_CODE],
         },
         "sectors": sectors,
+    }
+    eu_last = attach_eu(sectors, dataset["total"], load_rows(EU_PATH))
+    size_last, size_levels = attach_size(sectors, dataset["total"], load_rows(SIZE_PATH))
+    nuts = build_nuts(load_rows(NUTS_PATH))
+    dataset["nuts"] = nuts
+    dataset["meta"]["layers"] = {
+        "accounts": {
+            "dataset": "sbs_ovw_act",
+            "last_update": last_updates[0],
+            "source_url": dataset["meta"]["source_url"],
+            "note": "Conti delle imprese fino alla classe NACE a 4 cifre. Sotto le 4 cifre non ci sono ricavi né costi ufficiali.",
+        },
+        "eu": {
+            "dataset": "sbs_ovw_act",
+            "geo": "EU27_2020",
+            "last_update": eu_last,
+            "source_url": dataset["meta"]["source_url"],
+        },
+        "size": {
+            "dataset": "sbs_sc_ovw",
+            "last_update": size_last,
+            "source_url": "https://ec.europa.eu/eurostat/databrowser/view/sbs_sc_ovw/default/table?lang=en",
+            "classes": list(SIZE_CLASSES),
+            "levels_with_data": size_levels,
+            "note": "Classe di addetti per attività. In questo estratto il dettaglio NACE arriva al gruppo (3 cifre), non alla classe.",
+        },
+        "nuts": {
+            "dataset": "sbs_r_nuts2021",
+            "last_update": nuts["last_update"],
+            "source_url": nuts["source_url"],
+            "nace_levels": nuts["nace_levels"],
+            "note": nuts["note"],
+        },
     }
     return dataset
 

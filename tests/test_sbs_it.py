@@ -92,6 +92,25 @@ def test_hierarchy_and_coverage():
     assert dataset["meta"]["last_update"].startswith("30/09/26")
 
 
+def test_series_and_extra_layers_stay_official():
+    dataset = build()
+    assert [cell["v"] for cell in (
+        _cell(dataset, TOTAL_CODE, "2021", "ENT_NR"),
+        _cell(dataset, TOTAL_CODE, "2022", "ENT_NR"),
+    )] == [4466356, 4587208]
+    manufacturing = next(sector for sector in dataset["sectors"] if sector["code"] == "C")
+    assert manufacturing["size"]["2023"]["0-9"]["ENT_NR"] == {"s": "v", "v": 284161}
+    assert "size" not in next(sector for sector in dataset["sectors"] if sector["code"] == "C1011")
+    lombardy = dataset["nuts"]["series"]["C"]["ITC4"]["2023"]
+    assert lombardy["EMP_LOC_NR"]["v"] == 919021
+    assert lombardy["LOC_NR"]["v"] == 80222
+    assert dataset["nuts"]["nace_levels"]["class"] == 0
+    assert dataset["meta"]["layers"]["size"]["levels_with_data"]["class"] == 0
+    purchases = _cell(dataset, TOTAL_CODE, "2023", "PUR_RS_MEUR")
+    assert purchases["s"] == "v"
+    assert purchases["v"] == 1127457.71
+
+
 def test_estimated_flag_is_preserved():
     dataset = build()
     cell = _cell(dataset, "K642", "2023", "ENT_NR")

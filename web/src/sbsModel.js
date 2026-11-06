@@ -92,6 +92,22 @@ export function formatVariation(current, previous) {
   return pctFmt.format((current - previous) / Math.abs(previous))
 }
 
+export function formatShare(value) {
+  if (value == null || Number.isNaN(value)) return null
+  const digits = Math.abs(value) > 0 && Math.abs(value) < 0.001 ? 2 : 1
+  return new Intl.NumberFormat('it-IT', {
+    style: 'percent',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
+export function publishedValue(node, year, id) {
+  const cell = node?.years?.[year]?.[id]
+  if (!cell || cell.s === 'c' || cell.v == null) return null
+  return cell.v
+}
+
 export function indexDataset(dataset) {
   const byCode = new Map()
   const children = new Map()
