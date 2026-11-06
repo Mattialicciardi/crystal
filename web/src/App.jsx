@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { SearchIcon } from 'lucide-react'
+import { InfoIcon, SearchIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -11,7 +11,8 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
@@ -37,7 +38,6 @@ import {
   kpiVariation,
   normalize,
   rootReading,
-  sectionReading,
   sortSectors,
   titleIt,
 } from './sbsModel.js'
@@ -117,54 +117,37 @@ export default function App() {
   })
 
   const selectedSector = selected ? byCode.get(selected) : null
-  const reading = focusCode ? [sectionReading(focus, year)].filter(Boolean) : rootReading(byCode, year)
+  const reading = rootReading(byCode, year)
   const turnoverNote = data.meta.coverage.class_turnover[year]
   const otherYear = year === '2023' ? '2024' : '2023'
 
   return (
     <TooltipProvider>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8">
-        <header className="flex flex-col gap-4">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10">
+        <header className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-muted-foreground">Crystal</p>
+            <p className="text-sm text-muted-foreground">Crystal</p>
             <h1 className="text-3xl font-medium tracking-tight">Mappa dei settori italiani</h1>
-            <p className="max-w-3xl text-muted-foreground">
-              Conti strutturali delle imprese, anno {year}. Si parte dalle sezioni NACE e si scende fino alla classe, quattro cifre.
-            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              spacing={0}
-              value={year}
-              onValueChange={(value) => { if (value) setYear(value) }}
-              aria-label="Anno"
-            >
-              {data.meta.years.map((item) => (
-                <ToggleGroupItem key={item} value={item}>{item}</ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <p className="text-sm text-muted-foreground">
-              Eurostat {data.meta.dataset} · aggiornamento {data.meta.last_update_label}
-            </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                spacing={0}
+                value={year}
+                onValueChange={(value) => { if (value) setYear(value) }}
+                aria-label="Anno"
+              >
+                {data.meta.years.map((item) => (
+                  <ToggleGroupItem key={item} value={item}>{item}</ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+              <p className="text-sm text-muted-foreground">NACE Rev. 2 · ATECO 2007 · non ATECO 2025</p>
+            </div>
+            <ReadingGuide data={data} year={year} reading={reading} turnoverNote={turnoverNote} />
           </div>
         </header>
-
-        <Alert>
-          <AlertTitle>NACE Rev. 2, titoli ATECO 2007</AlertTitle>
-          <AlertDescription>
-            <span className="flex flex-col gap-2">
-              <span>{data.meta.classification_note} I titoli sono quelli italiani di ATECO 2007.</span>
-              <span>
-                In questo estratto mancano le sezioni A (agricoltura) e O (pubblica amministrazione).
-                La sezione S non ha un totale pubblicato; alcune sue divisioni sì.
-                K (finanza e assicurazioni) ha imprese e addetti, mentre i conti di bilancio sono riservati.
-                Il totale in alto è l’aggregato ufficiale {data.meta.total_code}, l’economia delle imprese.
-              </span>
-            </span>
-          </AlertDescription>
-        </Alert>
 
         <Breadcrumb>
           <BreadcrumbList>
@@ -190,22 +173,22 @@ export default function App() {
 
         <KpiCard sector={focus} year={year} otherYear={otherYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
 
-        {reading.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Come leggere i conti</CardTitle>
-              <CardDescription>Due fatti di struttura. Descrivono i conti, non dicono dove investire.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {reading.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            </CardContent>
-          </Card>
-        )}
-
         <Card>
           <CardHeader>
-            <CardTitle>Panoramica</CardTitle>
-            <CardDescription>L’area segue la metrica scelta. Il colore distingue la sezione e non esprime un giudizio.</CardDescription>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Panoramica</CardTitle>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <InfoIcon data-icon="inline-start" />
+                    Area e colore
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  L’area segue la metrica scelta. Il colore distingue la sezione e non è un giudizio. Il commercio (G) include la merce rivenduta: col fatturato, G occupa più spazio del valore creato.
+                </HoverCardContent>
+              </HoverCard>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <ToggleGroup
@@ -222,13 +205,9 @@ export default function App() {
                 <ToggleGroupItem key={metric.id} value={metric.id}>{metric.label}</ToggleGroupItem>
               ))}
             </ToggleGroup>
-            <Alert>
-              <AlertTitle>Il commercio gonfia il fatturato</AlertTitle>
-              <AlertDescription>
-                Il commercio (G) include la merce rivenduta. Per confrontare il peso dei settori, il valore aggiunto è la misura più stabile.
-                {sizeKey === 'NETTUR_MEUR' ? ' Ora l’area è il fatturato: G occupa più spazio di quanto dica il valore creato.' : ''}
-              </AlertDescription>
-            </Alert>
+            {sizeKey === 'NETTUR_MEUR' && (
+              <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area è più grande del valore creato.</p>
+            )}
             <SbsTreemap items={rows} year={year} sizeKey={sizeKey} onOpen={openSector} />
           </CardContent>
         </Card>
@@ -238,8 +217,7 @@ export default function App() {
             <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
             <CardDescription>
               {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
-              {normalizedQuery ? ` su ${rows.length}` : ''}.
-              {path.length === 0 ? ` Nel ${year} il fatturato di classe è pubblicato per ${turnoverNote.published} classi, riservato per ${turnoverNote.reserved}, assente per ${turnoverNote.absent}.` : ''}
+              {normalizedQuery ? ` su ${rows.length}` : ''}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -318,43 +296,17 @@ export default function App() {
           </CardContent>
           {selectedSector && (
             <CardContent>
-              <SectorCard sector={selectedSector} year={year} />
+              <SectorNote sector={selectedSector} year={year} />
             </CardContent>
           )}
-          <CardFooter className="text-sm text-muted-foreground">
-            Clic su una riga con figli per scendere. Su una classe, la riga resta ferma e apre la scheda. La tabella scorre in orizzontale. Le celle riservate non valgono zero e restano in fondo quando si ordina.
-          </CardFooter>
         </Card>
 
-        <section className="flex flex-col gap-3">
-          <h2 className="text-base font-medium">Cosa significa ogni voce</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {GLOSSARY.map((item) => (
-              <Card key={item.title} size="sm">
-                <CardHeader>
-                  <CardTitle>{item.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-muted-foreground">{item.body}</CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <Separator />
-        <footer className="flex flex-col gap-3 text-sm text-muted-foreground">
-          <p>
-            Fonte: Eurostat, Structural Business Statistics, dataset <a className="text-primary underline-offset-4 hover:underline" href={data.meta.source_url}>sbs_ovw_act</a> (Enterprises by detailed NACE Rev. 2 activity), geo Italia, anni {data.meta.years.join(' e ')}. Ultimo aggiornamento del dataset: {data.meta.last_update_label}.
-          </p>
-          <p>
-            {data.meta.producer_note}{' '}
-            <a className="text-primary underline-offset-4 hover:underline" href="https://www.istat.it/">ISTAT</a> è il produttore nazionale; Eurostat pubblica l’estratto usato qui.
-            Titoli di settore: {data.meta.labels_source}.
-          </p>
-          <p>
-            Aggregato {data.meta.total_code}: {data.meta.total_name}. Definizione Eurostat: {data.meta.total_name_en}.
-            La somma delle righe visibili può essere più bassa del totale ufficiale, perché alcune celle sono riservate e perché il totale di S non è pubblicato.
-          </p>
-          <p>{data.meta.classification_note} Questa mappa descrive la struttura dei conti. Non è un consiglio di investimento.</p>
+        <footer className="text-sm text-muted-foreground">
+          <a className="text-primary underline-offset-4 hover:underline" href={data.meta.source_url}>Eurostat sbs_ovw_act</a>
+          {' · '}
+          <a className="text-primary underline-offset-4 hover:underline" href="https://www.istat.it/">ISTAT</a>
+          {' · '}
+          aggiornamento {data.meta.last_update_label}
         </footer>
       </main>
     </TooltipProvider>
@@ -438,48 +390,100 @@ function CellValue({ cell }) {
 
 function KpiCard({ sector, year, otherYear, isTotal, totalCode }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{isTotal ? 'Italia' : `${sector.code} · ${titleIt(sector.name)}`}</CardTitle>
-        <CardDescription>
-          {isTotal
-            ? `Cifre ufficiali dell’aggregato ${totalCode}. Non sono la somma delle sezioni in tabella. `
-            : sector.published
-              ? 'Cifre ufficiali di questo codice. Non sono la somma dei figli: se una cella sotto è riservata, i conti non tornano. '
-              : 'Il totale di questa sezione non è pubblicato. Sotto ci sono solo le divisioni presenti nell’estratto.'}
-          {sector.published ? 'Il badge sotto ogni cifra è la variazione calcolata verso l’altro anno.' : ''}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-          {KPI_IDS.map((id) => {
-            const column = columnById(id)
-            const cell = displayCell(sector, year, column)
-            const variation = kpiVariation(sector, year, column)
-            const numeric = cell.kind === 'value' || cell.kind === 'estimated'
-            return (
-              <Card key={id} size="sm">
-                <CardHeader>
-                  <CardDescription>{column.label}</CardDescription>
-                  <CardTitle>
-                    {numeric ? (
-                      <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
-                    ) : (
-                      <CellValue cell={cell} />
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-start gap-2">
-                  {numeric && column.unit !== '%' && <p className="text-muted-foreground">{column.unit}</p>}
-                  {cell.kind === 'estimated' && <Badge variant="secondary">stima Eurostat</Badge>}
+    <section className="flex flex-col gap-4" aria-label="Indicatori del livello corrente">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h2 className="text-xl font-medium tracking-tight">
+          {isTotal ? 'Italia' : `${sector.code} · ${titleIt(sector.name)}`}
+        </h2>
+        {isTotal && <Badge variant="outline">{totalCode}</Badge>}
+        {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
+      </div>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+        {KPI_IDS.map((id) => {
+          const column = columnById(id)
+          const cell = displayCell(sector, year, column)
+          const variation = kpiVariation(sector, year, column)
+          const numeric = cell.kind === 'value' || cell.kind === 'estimated'
+          return (
+            <Card key={id} size="sm">
+              <CardHeader>
+                <CardDescription>
+                  <TermHint column={column} />
+                </CardDescription>
+                <CardTitle>
+                  {numeric ? (
+                    <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
+                  ) : (
+                    <CellValue cell={cell} />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {(variation || (numeric && column.unit !== '%') || cell.kind === 'estimated') && (
+                <CardContent className="flex flex-wrap items-center gap-2">
+                  {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
+                  {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
                   {variation && <Badge variant="outline">nel {otherYear}: {variation}</Badge>}
                 </CardContent>
-              </Card>
-            )
-          })}
+              )}
+            </Card>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function TermHint({ column }) {
+  const definition = definitionFor(column)
+  if (!definition) return column.label
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <button type="button" className="text-left underline-offset-4 hover:underline">{column.label}</button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-72">{definition}</HoverCardContent>
+    </HoverCard>
+  )
+}
+
+function ReadingGuide({ data, year, reading, turnoverNote }) {
+  return (
+    <Collapsible className="flex flex-col items-start gap-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" size="sm">
+          <InfoIcon data-icon="inline-start" />
+          Come leggere i dati
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="w-full">
+        <div className="flex max-w-3xl flex-col gap-4 rounded-xl bg-muted/50 p-4">
+          <p>{data.meta.classification_note} I titoli sono quelli italiani di ATECO 2007.</p>
+          <p>
+            Mancano le sezioni A (agricoltura) e O (pubblica amministrazione). S non ha il totale di sezione; alcune divisioni sì.
+            K ha imprese e addetti, i conti di bilancio sono riservati. Il totale è l’aggregato {data.meta.total_code}.
+          </p>
+          <p>
+            Nel {year} il fatturato di classe è pubblicato per {turnoverNote.published} classi, riservato per {turnoverNote.reserved}, assente per {turnoverNote.absent}.
+            «Riservato» non è zero. I rapporti segnati come calcolati usano solo valori ufficiali pubblicati.
+          </p>
+          {reading.length > 0 && <Separator />}
+          {reading.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          <Separator />
+          <div className="flex flex-col gap-3">
+            {GLOSSARY.map((item) => (
+              <div key={item.title} className="flex flex-col gap-1">
+                <p className="font-medium">{item.title}</p>
+                <p className="text-sm text-muted-foreground">{item.body}</p>
+              </div>
+            ))}
+          </div>
+          <Separator />
+          <p className="text-sm text-muted-foreground">
+            {data.meta.producer_note} {data.meta.total_name}. {data.meta.total_name_en}. Questi conti descrivono la struttura. Non sono un consiglio di investimento.
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -490,21 +494,17 @@ function withUnit(cell, unit) {
   return cell.text
 }
 
-function SectorCard({ sector, year }) {
+function SectorNote({ sector, year }) {
   const turnover = displayCell(sector, year, columnById('NETTUR_MEUR'))
   const valueAdded = displayCell(sector, year, columnById('AV_MEUR'))
   const gor = displayCell(sector, year, columnById('GOR_PC'))
   const firms = displayCell(sector, year, columnById('ENT_NR'))
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>{sector.code} · {titleIt(sector.name)}</CardTitle>
-        <CardDescription>Classe NACE Rev. 2, equivalente alle prime quattro cifre di ATECO 2007, anno {year}.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        Imprese {firms.text}. Fatturato {withUnit(turnover, 'mln €')}. Valore aggiunto {withUnit(valueAdded, 'mln €')}. GOR {withUnit(gor, '%')}.
-        Il GOR è il MOL sul fatturato: descrive la struttura del codice. Non è un utile di bilancio e non è un invito a investire.
-      </CardContent>
-    </Card>
+    <Alert>
+      <AlertTitle>{sector.code} · {titleIt(sector.name)}</AlertTitle>
+      <AlertDescription>
+        {year} · {firms.text} imprese · fatturato {withUnit(turnover, 'mln €')} · valore aggiunto {withUnit(valueAdded, 'mln €')} · GOR {withUnit(gor, '%')}
+      </AlertDescription>
+    </Alert>
   )
 }
