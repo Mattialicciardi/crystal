@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { hierarchy, treemap } from 'd3-hierarchy'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { SECTION_COLOR, columnById, displayCell, sizeOf, titleIt } from '../sbsModel.js'
 
 const trunc = (value, max) => (value && value.length > max ? `${value.slice(0, max - 1)}…` : value)
@@ -23,16 +24,18 @@ export default function SbsTreemap({ items, year, sizeKey, onOpen }) {
 
   if (!layout.leaves.length) {
     return (
-      <div className="treemap-empty">
-        <p>Nessun riquadro per {column.label.toLocaleLowerCase('it-IT')} in questo livello.</p>
-        <p>Le celle riservate, assenti o non positive restano fuori dalla mappa e si leggono nella tabella.</p>
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>Nessun riquadro per {column.label.toLocaleLowerCase('it-IT')}</EmptyTitle>
+          <EmptyDescription>Le celle riservate, assenti o non positive restano fuori dalla mappa e si leggono nella tabella.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
   return (
-    <div>
-      <svg viewBox="0 0 1000 460" className="treemap" role="img" aria-label={`Mappa dimensionata su ${column.label}`}>
+    <div className="flex flex-col gap-3">
+      <svg viewBox="0 0 1000 460" className="h-auto w-full rounded-lg bg-muted" role="img" aria-label={`Mappa dimensionata su ${column.label}`}>
         {layout.leaves.map((leaf) => {
           const sector = leaf.data
           const width = leaf.x1 - leaf.x0
@@ -43,20 +46,20 @@ export default function SbsTreemap({ items, year, sizeKey, onOpen }) {
             <g
               key={sector.code}
               transform={`translate(${leaf.x0},${leaf.y0})`}
-              className="cell"
+              className="cursor-pointer"
               onClick={() => onOpen(sector.code)}
             >
               <title>{`${sector.code} · ${label}\n${column.label}: ${shown.text} ${column.unit}`}</title>
-              <rect width={width} height={height} fill={SECTION_COLOR[sector.section] || '#4d5d70'} rx="2" />
-              {width > 54 && height > 28 && <text x="8" y="18" className="cell-code">{sector.code}</text>}
-              {width > 88 && height > 46 && <text x="8" y="36" className="cell-name">{trunc(label, Math.floor(width / 7.2))}</text>}
-              {width > 78 && height > 64 && <text x="8" y={height - 10} className="cell-val">{shown.text}</text>}
+              <rect width={width} height={height} fill={SECTION_COLOR[sector.section] || 'var(--muted-foreground)'} rx="2" />
+              {width > 54 && height > 28 && <text x="8" y="18" className="fill-card text-xs font-medium">{sector.code}</text>}
+              {width > 88 && height > 46 && <text x="8" y="36" className="fill-card text-xs">{trunc(label, Math.floor(width / 7.2))}</text>}
+              {width > 78 && height > 64 && <text x="8" y={height - 10} className="fill-card text-xs">{shown.text}</text>}
             </g>
           )
         })}
       </svg>
       {layout.aside.length > 0 && (
-        <p className="aside-note">
+        <p className="text-sm text-muted-foreground">
           Fuori dalla mappa, per {column.label.toLocaleLowerCase('it-IT')}: {summarizeAside(layout.aside)}.
         </p>
       )}
