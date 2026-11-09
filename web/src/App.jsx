@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { InfoIcon, SearchIcon } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { InfoIcon, MoonIcon, SearchIcon, SunIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -45,10 +45,20 @@ import {
 } from './sbsModel.js'
 
 const BASE = import.meta.env.BASE_URL
+const PRIMARY_KPI_IDS = ['NETTUR_MEUR', 'AV_MEUR', 'EMP_NR', 'ENT_NR']
+const SECONDARY_KPI_IDS = KPI_IDS.filter((id) => !PRIMARY_KPI_IDS.includes(id))
+const THEME_STORAGE_KEY = 'crystal-theme'
+
+function getInitialTheme() {
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
 export default function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [theme, setTheme] = useState(getInitialTheme)
   const [year, setYear] = useState('2023')
   const [path, setPath] = useState([])
   const [sizeKey, setSizeKey] = useState(DEFAULT_SIZE)
@@ -67,6 +77,12 @@ export default function App() {
   }, [])
 
   const indexed = useMemo(() => (data ? indexDataset(data) : null), [data])
+
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.style.colorScheme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   if (error) {
     return (
@@ -126,11 +142,21 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10">
-        <header className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground">Crystal</p>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8">
+        <header className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-3xl font-medium tracking-tight">Mappa dei settori italiani</h1>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`Attiva tema ${theme === 'dark' ? 'chiaro' : 'scuro'}`}
+              aria-pressed={theme === 'dark'}
+              onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <SunIcon data-icon="inline-start" /> : <MoonIcon data-icon="inline-start" />}
+              {theme === 'dark' ? 'Chiaro' : 'Scuro'}
+            </Button>
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -150,29 +176,57 @@ export default function App() {
             </div>
             <ReadingGuide data={data} year={year} reading={reading} turnoverNote={turnoverNote} />
           </div>
+          <FieldGroup className="max-w-xl">
+            <Field>
+              <FieldLabel htmlFor="sector-search">Cerca un settore</FieldLabel>
+              <div className="relative">
+                <SearchIcon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="sector-search"
+                  type="search"
+                  className="pl-9"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Codice ATECO o nome dell’attività"
+                />
+              </div>
+            </Field>
+          </FieldGroup>
+          {globalHits.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2" aria-live="polite">
+              <span className="text-sm text-muted-foreground">Altri livelli</span>
+              {globalHits.map((sector) => (
+                <Button key={sector.code} variant="outline" size="sm" onClick={() => openSector(sector.code)}>
+                  {sector.code} · {titleIt(sector.name)}
+                </Button>
+              ))}
+            </div>
+          )}
         </header>
 
-        <Breadcrumb>
-          <BreadcrumbList>
-            {crumbs.map((crumb, index) => {
-              const current = index === crumbs.length - 1
-              return (
-                <BreadcrumbItem key={crumb.length}>
-                  {index > 0 && <BreadcrumbSeparator />}
-                  {current ? (
-                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <button type="button" onClick={() => { setPath(path.slice(0, crumb.length)); setSelected(null); setQuery('') }}>
-                        {crumb.label}
-                      </button>
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
-              )
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
+        {path.length > 0 && (
+          <Breadcrumb>
+            <BreadcrumbList>
+              {crumbs.map((crumb, index) => {
+                const current = index === crumbs.length - 1
+                return (
+                  <BreadcrumbItem key={crumb.length}>
+                    {index > 0 && <BreadcrumbSeparator />}
+                    {current ? (
+                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <button type="button" onClick={() => { setPath(path.slice(0, crumb.length)); setSelected(null); setQuery('') }}>
+                          {crumb.label}
+                        </button>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                )
+              })}
+            </BreadcrumbList>
+          </Breadcrumb>
+        )}
 
         <KpiCard sector={focus} year={year} previousYear={previousYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
 
@@ -189,75 +243,55 @@ export default function App() {
           />
         )}
 
-        <Card>
-          <CardHeader>
+        <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
+          <CardHeader className="px-0">
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Panoramica</CardTitle>
+              <CardTitle>Esplora i settori</CardTitle>
               <HoverCard>
                 <HoverCardTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <InfoIcon data-icon="inline-start" />
-                    Area e colore
+                  <Button variant="ghost" size="icon" aria-label="Informazioni sulla mappa">
+                    <InfoIcon />
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="w-80">
-                  L’area segue la metrica scelta. Il colore distingue la sezione e non è un giudizio. Il commercio (G) include la merce rivenduta: col fatturato, G occupa più spazio del valore creato.
+                  Il colore identifica la sezione e non esprime un giudizio. Il commercio (G) include la merce rivenduta: col fatturato occupa più spazio del valore creato.
                 </HoverCardContent>
               </HoverCard>
             </div>
+            <CardDescription>Seleziona un riquadro per esplorare i livelli; area e colore aiutano a confrontare i settori.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              size="sm"
-              spacing={2}
-              value={sizeKey}
-              onValueChange={(value) => { if (value) setSizeKey(value) }}
-              aria-label="Metrica dell’area"
-              className="w-full flex-wrap justify-start"
-            >
-              {SIZE_METRICS.map((metric) => (
-                <ToggleGroupItem key={metric.id} value={metric.id}>{metric.label}</ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            {sizeKey === 'NETTUR_MEUR' && (
-              <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area è più grande del valore creato.</p>
-            )}
+          <CardContent className="flex flex-col gap-3 px-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <label htmlFor="treemap-size" className="text-sm font-medium">Area proporzionale a</label>
+              <select
+                id="treemap-size"
+                value={sizeKey}
+                onChange={(event) => setSizeKey(event.target.value)}
+                className="h-9 max-w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {SIZE_METRICS.map((metric) => (
+                  <option key={metric.id} value={metric.id}>{metric.label}</option>
+                ))}
+              </select>
+              {sizeKey === 'NETTUR_MEUR' && (
+                <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area supera il valore creato.</p>
+              )}
+            </div>
             <SbsTreemap items={rows} year={year} sizeKey={sizeKey} onOpen={openSector} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
+          <CardHeader className="px-0">
             <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
             <CardDescription>
               {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
               {normalizedQuery ? ` su ${rows.length}` : ''}
+              {' · Seleziona una voce per scendere di livello o aprire i dettagli.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <FieldGroup className="max-w-sm">
-              <Field>
-                <FieldLabel htmlFor="sector-search">Cerca in questo livello</FieldLabel>
-                <Input
-                  id="sector-search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Codice o nome, per esempio alimentari"
-                />
-              </Field>
-            </FieldGroup>
-            {globalHits.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-muted-foreground">Altrove nella mappa</span>
-                {globalHits.map((sector) => (
-                  <Button key={sector.code} variant="outline" size="sm" onClick={() => openSector(sector.code)}>
-                    {sector.code} · {titleIt(sector.name)}
-                  </Button>
-                ))}
-              </div>
-            )}
+          <CardContent className="flex flex-col gap-3 px-0">
+            <p className="text-xs text-muted-foreground sm:hidden">Scorri la tabella in orizzontale per vedere tutte le metriche.</p>
             {sorted.length === 0 ? (
               <Empty>
                 <EmptyHeader>
@@ -267,14 +301,14 @@ export default function App() {
                 </EmptyHeader>
               </Empty>
             ) : (
-              <Table>
-                <TableHeader>
+              <Table className="min-w-[1100px]">
+                <TableHeader className="[&_tr]:border-border/60 [&_tr]:bg-muted/30">
                   <TableRow>
-                    <TableHead className="sticky left-0 z-10 bg-card whitespace-normal" aria-sort={ariaSort(sort, 'name')}>
+                    <TableHead className="sticky left-0 z-10 bg-background whitespace-normal" aria-sort={ariaSort(sort, 'name')}>
                       <SortButton label="Settore" active={sort.key === 'name'} dir={sort.dir} onClick={() => clickHeader('name')} />
                     </TableHead>
                     {COLUMNS.map((column) => (
-                      <TableHead key={column.id} className="text-right" aria-sort={ariaSort(sort, column.id)}>
+                      <TableHead key={column.id} className="max-w-32 whitespace-normal text-right text-xs text-muted-foreground" aria-sort={ariaSort(sort, column.id)}>
                         <ColumnHeading column={column} sort={sort} onSort={() => clickHeader(column.id)} />
                       </TableHead>
                     ))}
@@ -287,19 +321,25 @@ export default function App() {
                     return (
                       <TableRow
                         key={sector.code}
+                        className="border-border/50 hover:bg-muted/40"
                         data-state={active ? 'selected' : undefined}
-                        className="cursor-pointer"
-                        onClick={() => (kids ? openSector(sector.code) : setSelected(sector.code))}
                       >
-                        <TableHead scope="row" className="sticky left-0 bg-card whitespace-normal">
+                        <TableHead scope="row" className="sticky left-0 max-w-64 bg-background whitespace-normal font-normal">
                           <span className="flex flex-col items-start gap-1">
                             <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
-                            <span>{titleIt(sector.name)}</span>
+                            <button
+                              type="button"
+                              className="text-left hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                              onClick={() => (kids ? openSector(sector.code) : setSelected(sector.code))}
+                              aria-label={`${kids ? 'Esplora' : 'Mostra dettagli di'} ${sector.code} ${titleIt(sector.name)}`}
+                            >
+                              {titleIt(sector.name)}
+                            </button>
                             {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
                           </span>
                         </TableHead>
                         {COLUMNS.map((column) => (
-                          <TableCell key={column.id} className="text-right tabular-nums">
+                          <TableCell key={column.id} className="text-right text-xs tabular-nums md:text-sm">
                             <CellValue cell={displayCell(sector, year, column)} />
                           </TableCell>
                         ))}
@@ -414,40 +454,63 @@ function KpiCard({ sector, year, previousYear, isTotal, totalCode }) {
         {isTotal && <Badge variant="outline">{totalCode}</Badge>}
         {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-        {KPI_IDS.map((id) => {
-          const column = columnById(id)
-          const cell = displayCell(sector, year, column)
-          const variation = previousYear
-            ? formatVariation(publishedValue(sector, year, id), publishedValue(sector, previousYear, id))
-            : null
-          const numeric = cell.kind === 'value' || cell.kind === 'estimated'
-          return (
-            <Card key={id} size="sm">
-              <CardHeader>
-                <CardDescription>
-                  <TermHint column={column} />
-                </CardDescription>
-                <CardTitle>
-                  {numeric ? (
-                    <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
-                  ) : (
-                    <CellValue cell={cell} />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              {(variation || (numeric && column.unit !== '%') || cell.kind === 'estimated') && (
-                <CardContent className="flex flex-wrap items-center gap-2">
-                  {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
-                  {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
-                  {variation && <Badge variant="outline">vs {previousYear}: {variation}</Badge>}
-                </CardContent>
-              )}
-            </Card>
-          )
-        })}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {PRIMARY_KPI_IDS.map((id) => (
+          <KpiMetric key={id} id={id} sector={sector} year={year} previousYear={previousYear} />
+        ))}
       </div>
+      {SECONDARY_KPI_IDS.length > 0 && (
+        <Collapsible className="flex flex-col items-start gap-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm">Altri indicatori ufficiali ({SECONDARY_KPI_IDS.length})</Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="w-full">
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                Altri valori dei conti economici. Le descrizioni spiegano ogni voce; dove disponibile, il confronto mostra la variazione rispetto all’anno precedente.
+              </p>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {SECONDARY_KPI_IDS.map((id) => (
+                  <KpiMetric key={id} id={id} sector={sector} year={year} previousYear={previousYear} />
+                ))}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </section>
+  )
+}
+
+function KpiMetric({ id, sector, year, previousYear }) {
+  const column = columnById(id)
+  const cell = displayCell(sector, year, column)
+  const variation = previousYear
+    ? formatVariation(publishedValue(sector, year, id), publishedValue(sector, previousYear, id))
+    : null
+  const numeric = cell.kind === 'value' || cell.kind === 'estimated'
+  return (
+    <Card size="sm" className="rounded-none border-0 bg-transparent py-2 ring-0">
+      <CardHeader>
+        <CardDescription>
+          <TermHint column={column} />
+        </CardDescription>
+        <CardTitle>
+          {numeric ? (
+            <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
+          ) : (
+            <CellValue cell={cell} />
+          )}
+        </CardTitle>
+      </CardHeader>
+      {(variation || (numeric && column.unit !== '%') || cell.kind === 'estimated') && (
+        <CardContent className="flex flex-wrap items-center gap-2">
+          {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
+          {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
+          {variation && <Badge variant="outline">vs {previousYear}: {variation}</Badge>}
+        </CardContent>
+      )}
+    </Card>
   )
 }
 
