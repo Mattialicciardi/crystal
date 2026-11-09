@@ -11,8 +11,28 @@ cd "$(dirname "$0")"
 
 REPO_SSH="git@github.com:Mattialicciardi/crystal.git"
 
+echo "→ verifica dati e test"
+generated="$(mktemp)"
+trap 'rm -f "$generated"' EXIT
+python3 - "$generated" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+from pipeline.build_sbs_it import build
+
+Path(sys.argv[1]).write_text(
+    json.dumps(build(), ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+)
+PYTHON
+cmp -s "$generated" web/public/sbs-it.json || {
+  echo "Rigenera web/public/sbs-it.json con python3 pipeline/build_sbs_it.py" >&2
+  exit 1
+}
+python3 -m pytest tests/
+npm --prefix web ci --no-audit --no-fund
+npm --prefix web test
+
 echo "→ build statica"
-npm --prefix web install --no-audit --no-fund >/dev/null 2>&1 || true
 npm --prefix web run build
 touch web/dist/.nojekyll
 
