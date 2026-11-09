@@ -13,7 +13,7 @@ import {
   sizeSnapshot,
 } from '../sbsInsights.js'
 
-export default function InsightPanel({ sector, parent, siblings, total, year, years, nuts, byCode }) {
+export default function InsightPanel({ sector, parent, siblings, total, year, years, nuts, byCode, totalCode }) {
   const facts = accountFacts(sector, { total, parent, siblings, year, years })
   const primaryFacts = facts.slice(0, 4)
   const additionalFacts = facts.slice(4)
@@ -33,7 +33,7 @@ export default function InsightPanel({ sector, parent, siblings, total, year, ye
   const valueAdded = sizeNode ? sizeSnapshot(sizeNode, year, 'AV_MEUR') : null
   const employed = sizeNode ? sizeSnapshot(sizeNode, year, 'EMP_NR') : null
   const regions = regionCode
-    ? regionalRows(nuts.series[regionCode.code], nuts.areas, year, nuts.series)
+    ? regionalRows(nuts.series[regionCode.code], nuts.areas, year, nuts.series, regionCode.code, totalCode)
     : []
   const extra = EXTRA_ACCOUNTS.filter((column) => sector.years?.[year]?.[column.id])
 
@@ -267,7 +267,7 @@ function RegionBlock({ sector, regionCode, regions, nuts }) {
         </TableBody>
       </Table>
       <p className="text-xs text-muted-foreground">
-        L’indice confronta la quota regionale degli addetti del settore con quella delle aree confrontabili: sopra 1, il settore pesa più che nella media di queste aree.
+        L’indice confronta il peso del settore con quello delle aree confrontabili, usando lo stesso perimetro di attività. Sopra 1, il settore pesa di più nella regione.
       </p>
     </div>
   )
