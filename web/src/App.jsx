@@ -63,6 +63,8 @@ export default function App() {
   const [path, setPath] = useState([])
   const [sizeKey, setSizeKey] = useState(DEFAULT_SIZE)
   const [sort, setSort] = useState({ key: 'AV_MEUR', dir: 'desc' })
+  const [view, setView] = useState('table')
+  const [showAllMetrics, setShowAllMetrics] = useState(false)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(null)
 
@@ -105,7 +107,11 @@ export default function App() {
   const filtered = normalizedQuery
     ? rows.filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
     : rows
-  const sorted = sortSectors(filtered, year, sort)
+  const visibleColumns = showAllMetrics ? COLUMNS : COLUMNS.filter((column) => PRIMARY_KPI_IDS.includes(column.id))
+  const visibleSort = visibleColumns.some((column) => column.id === sort.key) || sort.key === 'name'
+    ? sort
+    : { key: 'AV_MEUR', dir: 'desc' }
+  const sorted = sortSectors(filtered, year, visibleSort)
   const level = sorted[0]?.level || rows[0]?.level
   const globalHits = normalizedQuery.length < 2 ? [] : data.sectors
     .filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
@@ -125,7 +131,7 @@ export default function App() {
   }
 
   const clickHeader = (key) => {
-    setSort((current) => ({ key, dir: current.key === key && current.dir === 'desc' ? 'asc' : 'desc' }))
+    setSort({ key, dir: visibleSort.key === key && visibleSort.dir === 'desc' ? 'asc' : 'desc' })
   }
 
   const crumbs = [{ label: 'Italia', length: 0 }]
@@ -228,141 +234,158 @@ export default function App() {
           </Breadcrumb>
         )}
 
-        <KpiCard sector={focus} year={year} previousYear={previousYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
+        <KpiCard sector={selectedSector || focus} year={year} previousYear={previousYear} isTotal={!focusCode && !selectedSector} totalCode={data.meta.total_code} />
 
         {(selectedSector || focusCode) && (
-          <InsightPanel
-            sector={selectedSector || focus}
-            parent={((selectedSector || focus).parent ? byCode.get((selectedSector || focus).parent) : null)}
-            siblings={children.get((selectedSector || focus).parent || '__root__') || []}
-            total={data.total}
-            year={year}
-            years={data.meta.years}
-            nuts={data.nuts}
-            byCode={byCode}
-          />
+          <details key={(selectedSector || focus).code} className="rounded-lg border p-4">
+            <summary className="cursor-pointer font-medium">Analisi del settore</summary>
+              <InsightPanel
+                sector={selectedSector || focus}
+                parent={((selectedSector || focus).parent ? byCode.get((selectedSector || focus).parent) : null)}
+                siblings={children.get((selectedSector || focus).parent || '__root__') || []}
+                total={data.total}
+                year={year}
+                years={data.meta.years}
+                totalCode={data.meta.total_code}
+                nuts={data.nuts}
+                byCode={byCode}
+              />
+          </details>
         )}
 
-        <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
-          <CardHeader className="px-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Esplora i settori</CardTitle>
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Informazioni sulla mappa">
-                    <InfoIcon />
-                  </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-80">
-                  Il colore identifica la sezione e non esprime un giudizio. Il commercio (G) include la merce rivenduta: col fatturato occupa più spazio del valore creato.
-                </HoverCardContent>
-              </HoverCard>
-            </div>
-            <CardDescription>Seleziona un riquadro per esplorare i livelli; area e colore aiutano a confrontare i settori.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 px-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="treemap-size" className="text-sm font-medium">Area proporzionale a</label>
-              <select
-                id="treemap-size"
-                value={sizeKey}
-                onChange={(event) => setSizeKey(event.target.value)}
-                className="h-9 max-w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {SIZE_METRICS.map((metric) => (
-                  <option key={metric.id} value={metric.id}>{metric.label}</option>
-                ))}
-              </select>
-              {sizeKey === 'NETTUR_MEUR' && (
-                <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area supera il valore creato.</p>
-              )}
-            </div>
-            <SbsTreemap items={rows} year={year} sizeKey={sizeKey} onOpen={openSector} />
-          </CardContent>
-        </Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-medium">Esplora i settori</h2>
+          <ToggleGroup type="single" value={view} onValueChange={(value) => { if (value) setView(value) }} aria-label="Vista settori" variant="outline">
+            <ToggleGroupItem value="table">Tabella</ToggleGroupItem>
+            <ToggleGroupItem value="map">Mappa</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
 
-        <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
-          <CardHeader className="px-0">
-            <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
-            <CardDescription>
-              {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
-              {normalizedQuery ? ` su ${rows.length}` : ''}
-              {' · Seleziona una voce per scendere di livello o aprire i dettagli.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 px-0">
-            <p className="text-xs text-muted-foreground sm:hidden">Scorri la tabella in orizzontale per vedere tutte le metriche.</p>
-            {sorted.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon"><SearchIcon /></EmptyMedia>
-                  <EmptyTitle>Nessuna voce</EmptyTitle>
-                  <EmptyDescription>Nessuna voce di questo livello corrisponde alla ricerca.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <Table className="min-w-[1100px]">
-                <TableHeader className="[&_tr]:border-border/60 [&_tr]:bg-muted/30">
-                  <TableRow>
-                    <TableHead className="sticky left-0 z-10 bg-background whitespace-normal" aria-sort={ariaSort(sort, 'name')}>
-                      <SortButton label="Settore" active={sort.key === 'name'} dir={sort.dir} onClick={() => clickHeader('name')} />
-                    </TableHead>
-                    {COLUMNS.map((column) => (
-                      <TableHead key={column.id} className="max-w-32 whitespace-normal text-right text-xs text-muted-foreground" aria-sort={ariaSort(sort, column.id)}>
-                        <ColumnHeading column={column} sort={sort} onSort={() => clickHeader(column.id)} />
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sorted.map((sector) => {
-                    const kids = (children.get(sector.code) || []).length > 0
-                    const active = selected === sector.code
-                    return (
-                      <TableRow
-                        key={sector.code}
-                        className="border-border/50 hover:bg-muted/40"
-                        data-state={active ? 'selected' : undefined}
-                      >
-                        <TableHead scope="row" className="sticky left-0 max-w-64 bg-background whitespace-normal font-normal">
-                          <span className="flex flex-col items-start gap-1">
-                            <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
-                            <button
-                              type="button"
-                              className="text-left hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                              onClick={() => (kids ? openSector(sector.code) : setSelected(sector.code))}
-                              aria-label={`${kids ? 'Esplora' : 'Mostra dettagli di'} ${sector.code} ${titleIt(sector.name)}`}
-                            >
-                              {titleIt(sector.name)}
-                            </button>
-                            {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
-                          </span>
-                        </TableHead>
-                        {COLUMNS.map((column) => (
-                          <TableCell key={column.id} className="text-right text-xs tabular-nums md:text-sm">
-                            <CellValue cell={displayCell(sector, year, column)} />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-          {selectedSector && (
-            <CardContent>
-              <SectorNote sector={selectedSector} year={year} />
+        {view === 'map' ? (
+          <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
+            <CardHeader className="px-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Mappa {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Informazioni sulla mappa">
+                      <InfoIcon />
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    Il colore identifica la sezione e non esprime un giudizio. Il commercio (G) include la merce rivenduta: col fatturato occupa più spazio del valore creato.
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+              <CardDescription>Seleziona un riquadro per esplorare i livelli; area e colore aiutano a confrontare i settori.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 px-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="treemap-size" className="text-sm font-medium">Area proporzionale a</label>
+                <select
+                  id="treemap-size"
+                  value={sizeKey}
+                  onChange={(event) => setSizeKey(event.target.value)}
+                  className="h-9 max-w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {SIZE_METRICS.map((metric) => (
+                    <option key={metric.id} value={metric.id}>{metric.label}</option>
+                  ))}
+                </select>
+                {sizeKey === 'NETTUR_MEUR' && (
+                  <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area supera il valore creato.</p>
+                )}
+              </div>
+              <SbsTreemap items={filtered} year={year} sizeKey={sizeKey} onOpen={openSector} />
             </CardContent>
-          )}
-        </Card>
+          </Card>
+        ) : (
+          <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
+            <CardHeader className="px-0">
+              <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
+              <CardDescription>
+                {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
+                {normalizedQuery ? ` su ${rows.length}` : ''}
+                {' · Seleziona una voce per scendere di livello o aprire i dettagli.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 px-0">
+              <Button type="button" variant="outline" size="sm" className="self-start" aria-pressed={showAllMetrics} onClick={() => setShowAllMetrics((current) => !current)}>
+                {showAllMetrics ? 'Mostra indicatori principali' : 'Mostra tutti gli indicatori'}
+              </Button>
+              <p className="text-xs text-muted-foreground sm:hidden">Scorri la tabella in orizzontale per vedere tutte le metriche.</p>
+              {sorted.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon"><SearchIcon /></EmptyMedia>
+                    <EmptyTitle>Nessuna voce</EmptyTitle>
+                    <EmptyDescription>Nessuna voce di questo livello corrisponde alla ricerca.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <Table className={showAllMetrics ? "min-w-[1100px]" : "min-w-[540px]"}>
+                  <TableHeader className="[&_tr]:border-border/60 [&_tr]:bg-muted/30">
+                    <TableRow>
+                      <TableHead className="sticky left-0 z-10 bg-background whitespace-normal" aria-sort={ariaSort(visibleSort, 'name')}>
+                        <SortButton label="Settore" active={visibleSort.key === 'name'} dir={visibleSort.dir} onClick={() => clickHeader('name')} />
+                      </TableHead>
+                      {visibleColumns.map((column) => (
+                        <TableHead key={column.id} className="max-w-32 whitespace-normal text-right text-xs text-muted-foreground" aria-sort={ariaSort(visibleSort, column.id)}>
+                          <ColumnHeading column={column} sort={visibleSort} onSort={() => clickHeader(column.id)} />
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sorted.map((sector) => {
+                      const kids = (children.get(sector.code) || []).length > 0
+                      const active = selected === sector.code
+                      return (
+                        <TableRow
+                          key={sector.code}
+                          className="border-border/50 hover:bg-muted/40"
+                          data-state={active ? 'selected' : undefined}
+                        >
+                          <TableHead scope="row" className="sticky left-0 max-w-64 bg-background whitespace-normal font-normal">
+                            <span className="flex flex-col items-start gap-1">
+                              <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
+                              <button
+                                type="button"
+                                className="text-left hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                onClick={() => openSector(sector.code)}
+                                aria-label={`${kids ? 'Esplora' : 'Mostra dettagli di'} ${sector.code} ${titleIt(sector.name)}`}
+                              >
+                                {titleIt(sector.name)}
+                              </button>
+                              {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
+                            </span>
+                          </TableHead>
+                          {visibleColumns.map((column) => (
+                            <TableCell key={column.id} className="text-right text-xs tabular-nums md:text-sm">
+                              <CellValue cell={displayCell(sector, year, column)} />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+            {selectedSector && (
+              <CardContent>
+                <SectorNote sector={selectedSector} year={year} />
+              </CardContent>
+            )}
+          </Card>
+        )}
 
         <footer className="text-sm text-muted-foreground">
           <a className="text-primary underline-offset-4 hover:underline" href={data.meta.source_url}>Eurostat sbs_ovw_act</a>
           {' · '}
           <a className="text-primary underline-offset-4 hover:underline" href="https://www.istat.it/">ISTAT</a>
           {' · '}
-          aggiornamento {data.meta.last_update_label}
+          aggiornamento {data.meta.last_update}
         </footer>
       </main>
     </TooltipProvider>
