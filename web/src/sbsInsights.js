@@ -52,7 +52,8 @@ export function rankAmong(value, others) {
 }
 
 export function locationQuotient(regionSector, regionTotal, italySector, italyTotal) {
-  if ([regionSector, regionTotal, italySector, italyTotal].some((value) => value == null || value === 0)) return null
+  if ([regionSector, regionTotal, italySector, italyTotal].some((value) => value == null)
+    || regionTotal <= 0 || italySector <= 0 || italyTotal <= 0) return null
   return (regionSector / regionTotal) / (italySector / italyTotal)
 }
 
@@ -67,6 +68,10 @@ function fact(id, label, text, detail) {
   return { id, label, text, detail: detail || null }
 }
 
+function productivityFor(valueAdded, employed) {
+  return valueAdded == null || employed == null || employed <= 0 ? null : (valueAdded * 1000) / employed
+}
+
 export function accountFacts(sector, context) {
   const { total, parent, siblings, year, years } = context
   const firms = publishedValue(sector, year, 'ENT_NR')
@@ -79,13 +84,9 @@ export function accountFacts(sector, context) {
   const personnel = publishedValue(sector, year, 'EXPN_SAL_BEN_MEUR')
   const gos = publishedValue(sector, year, 'GOS_MEUR')
   const gor = publishedValue(sector, year, 'GOR_PC')
-  const productivity = employed ? (valueAdded == null ? null : (valueAdded * 1000) / employed) : null
-  const parentProductivity = parent && publishedValue(parent, year, 'EMP_NR')
-    ? (publishedValue(parent, year, 'AV_MEUR') == null ? null : (publishedValue(parent, year, 'AV_MEUR') * 1000) / publishedValue(parent, year, 'EMP_NR'))
-    : null
-  const italyProductivity = publishedValue(total, year, 'EMP_NR')
-    ? (publishedValue(total, year, 'AV_MEUR') * 1000) / publishedValue(total, year, 'EMP_NR')
-    : null
+  const productivity = productivityFor(valueAdded, employed)
+  const parentProductivity = productivityFor(publishedValue(parent, year, 'AV_MEUR'), publishedValue(parent, year, 'EMP_NR'))
+  const italyProductivity = productivityFor(publishedValue(total, year, 'AV_MEUR'), publishedValue(total, year, 'EMP_NR'))
   const vaRank = rankAmong(valueAdded, (siblings || []).map((item) => publishedValue(item, year, 'AV_MEUR')))
   const turnoverRank = rankAmong(turnover, (siblings || []).map((item) => publishedValue(item, year, 'NETTUR_MEUR')))
   const has = (value) => years.includes(value)
@@ -94,7 +95,7 @@ export function accountFacts(sector, context) {
   const euTurnover = cellValue(sector.eu?.[year], 'NETTUR_MEUR')
   const euValueAdded = cellValue(sector.eu?.[year], 'AV_MEUR')
   const euEmployed = cellValue(sector.eu?.[year], 'EMP_NR')
-  const euProductivity = euEmployed && euValueAdded != null ? (euValueAdded * 1000) / euEmployed : null
+  const euProductivity = productivityFor(euValueAdded, euEmployed)
 
   return [
     fact('quota-va', 'Quota del valore aggiunto italiano', formatShare(share(valueAdded, publishedValue(total, year, 'AV_MEUR')))),
@@ -161,37 +162,28 @@ export function sizeSnapshot(sector, year, indicator) {
   }
 }
 
-function regionEmployment(allSeries, areaCode, year) {
-  const sections = Object.keys(allSeries).filter((code) => /^[A-Z]$/.test(code))
-  let sum = 0
-  let any = false
-  for (const section of sections) {
-    const value = cellValue(allSeries[section]?.[areaCode]?.[year], 'EMP_LOC_NR')
-    if (value != null) {
-      sum += value
-      any = true
+export function regionalRows(seriesForCode, areas, year, allSeries, sectorCode, totalCode) {
+  if (!seriesForCode || !allSeries) return []
+  const employment = (series, code) => cellValue(series?.[code]?.[year], 'EMP_LOC_NR')
+  const comparable = areas.filter((area) => employment(seriesForCode, area.code) != null)
+  const official = comparable.every((area) => employment(allSeries[totalCode], area.code) > 0)
+  const sections = Object.keys(allSeries).filter((code) => /^[A-Z]$/.test(code)
+    && comparable.every((area) => employment(allSeries[code], area.code) != null))
+  const totals = new Map()
+  for (const { code } of comparable) {
+    if (official) {
+      totals.set(code, employment(allSeries[totalCode], code))
+    } else if (sections.includes(sectorCode?.[0])) {
+      const total = sections.reduce((sum, section) => sum + employment(allSeries[section], code), 0)
+      if (total > 0) totals.set(code, total)
     }
   }
-  return any ? sum : null
-}
-
-export function regionalRows(seriesForCode, areas, year, allSeries) {
-  if (!seriesForCode || !allSeries) return []
-  const comparable = []
-  for (const area of areas) {
-    const sectorEmployed = cellValue(seriesForCode[area.code]?.[year], 'EMP_LOC_NR')
-    const regionTotal = regionEmployment(allSeries, area.code, year)
-    if (sectorEmployed != null && regionTotal != null) comparable.push(area.code)
-  }
-  const italySector = comparable.reduce((sum, code) => sum + cellValue(seriesForCode[code][year], 'EMP_LOC_NR'), 0)
-  const italyTotal = comparable.reduce((sum, code) => sum + regionEmployment(allSeries, code, year), 0)
+  const benchmarkSector = [...totals.keys()].reduce((sum, code) => sum + employment(seriesForCode, code), 0)
+  const benchmarkTotal = [...totals.values()].reduce((sum, total) => sum + total, 0)
   return areas.map((area) => {
     const bucket = seriesForCode[area.code]?.[year] || {}
     const employed = cellValue(bucket, 'EMP_LOC_NR')
-    const regionTotal = regionEmployment(allSeries, area.code, year)
-    const quotient = comparable.includes(area.code)
-      ? locationQuotient(employed, regionTotal, italySector, italyTotal)
-      : null
+    const quotient = locationQuotient(employed, totals.get(area.code), benchmarkSector, benchmarkTotal)
     return {
       code: area.code,
       name: area.name,
