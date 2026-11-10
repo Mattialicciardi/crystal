@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { InfoIcon, SearchIcon } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { InfoIcon, MoonIcon, SearchIcon, SunIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -51,10 +51,20 @@ import {
 } from './sbsModel.js'
 
 const BASE = import.meta.env.BASE_URL
+const PRIMARY_KPI_IDS = ['NETTUR_MEUR', 'AV_MEUR', 'EMP_NR', 'ENT_NR']
+const SECONDARY_KPI_IDS = KPI_IDS.filter((id) => !PRIMARY_KPI_IDS.includes(id))
+const THEME_STORAGE_KEY = 'crystal-theme'
+
+function getInitialTheme() {
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
 export default function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [theme, setTheme] = useState(getInitialTheme)
   const [year, setYear] = useState('2023')
   const [path, setPath] = useState([])
   const [sizeKey, setSizeKey] = useState(DEFAULT_SIZE)
@@ -84,6 +94,12 @@ export default function App() {
 
   const indexed = useMemo(() => (data ? indexDataset(data) : null), [data])
 
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.style.colorScheme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
+
   if (error) {
     return (
       <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col justify-center px-4">
@@ -108,12 +124,20 @@ export default function App() {
     ? collectDescendants(children, focusCode)
     : levelRows
   const sectionOptions = [...new Set(levelRows.map((sector) => sector.section))].sort()
+  const activeSectionFilter = sectionOptions.includes(sectionFilter) ? sectionFilter : 'all'
   const sizeColumn = columnById(sizeKey)
+  const activeFilterCount = [
+    activeSectionFilter !== 'all',
+    rowLevel !== 'auto',
+    publishedOnly,
+    minText.trim() !== '',
+    maxText.trim() !== '',
+  ].filter(Boolean).length
   const filtered = searchPool.filter((sector) => matchesView(sector, {
     year,
     column: sizeColumn,
     query: normalizedQuery,
-    section: sectionFilter,
+    section: activeSectionFilter,
     publishedOnly,
     min: parseBound(minText),
     max: parseBound(maxText),
@@ -155,11 +179,21 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10">
-        <header className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground">Crystal</p>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8">
+        <header className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-3xl font-medium tracking-tight">Mappa dei settori italiani</h1>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`Attiva tema ${theme === 'dark' ? 'chiaro' : 'scuro'}`}
+              aria-pressed={theme === 'dark'}
+              onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <SunIcon data-icon="inline-start" /> : <MoonIcon data-icon="inline-start" />}
+              {theme === 'dark' ? 'Chiaro' : 'Scuro'}
+            </Button>
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -179,29 +213,57 @@ export default function App() {
             </div>
             <ReadingGuide data={data} year={year} reading={reading} turnoverNote={turnoverNote} />
           </div>
+          <FieldGroup className="max-w-xl">
+            <Field>
+              <FieldLabel htmlFor="sector-search">Cerca un settore</FieldLabel>
+              <div className="relative">
+                <SearchIcon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="sector-search"
+                  type="search"
+                  className="pl-9"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Codice ATECO o nome dell’attività"
+                />
+              </div>
+            </Field>
+          </FieldGroup>
+          {globalHits.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2" aria-live="polite">
+              <span className="text-sm text-muted-foreground">Altri livelli</span>
+              {globalHits.map((sector) => (
+                <Button key={sector.code} variant="outline" size="sm" onClick={() => openSector(sector.code)}>
+                  {sector.code} · {titleIt(sector.name)}
+                </Button>
+              ))}
+            </div>
+          )}
         </header>
 
-        <Breadcrumb>
-          <BreadcrumbList>
-            {crumbs.map((crumb, index) => {
-              const current = index === crumbs.length - 1
-              return (
-                <BreadcrumbItem key={crumb.length}>
-                  {index > 0 && <BreadcrumbSeparator />}
-                  {current ? (
-                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <button type="button" onClick={() => { setPath(path.slice(0, crumb.length)); setSelected(null); setQuery('') }}>
-                        {crumb.label}
-                      </button>
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
-              )
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
+        {path.length > 0 && (
+          <Breadcrumb>
+            <BreadcrumbList>
+              {crumbs.map((crumb, index) => {
+                const current = index === crumbs.length - 1
+                return (
+                  <BreadcrumbItem key={crumb.length}>
+                    {index > 0 && <BreadcrumbSeparator />}
+                    {current ? (
+                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <button type="button" onClick={() => { setPath(path.slice(0, crumb.length)); setSelected(null); setQuery('') }}>
+                          {crumb.label}
+                        </button>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                )
+              })}
+            </BreadcrumbList>
+          </Breadcrumb>
+        )}
 
         <KpiCard sector={focus} year={year} previousYear={previousYear} isTotal={!focusCode} totalCode={data.meta.total_code} />
 
@@ -218,24 +280,24 @@ export default function App() {
           />
         )}
 
-        <Card>
-          <CardHeader>
+        <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
+          <CardHeader className="px-0">
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Panoramica</CardTitle>
+              <CardTitle>Esplora i settori</CardTitle>
               <HoverCard>
                 <HoverCardTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <InfoIcon data-icon="inline-start" />
-                    Area e colore
+                  <Button variant="ghost" size="icon" aria-label="Informazioni sulla mappa">
+                    <InfoIcon />
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent className="w-80">
-                  L’area segue la metrica scelta. Il colore distingue la sezione e non è un giudizio. Il commercio (G) include la merce rivenduta: col fatturato, G occupa più spazio del valore creato.
+                  Il colore identifica la sezione e non esprime un giudizio. Il commercio (G) include la merce rivenduta: col fatturato occupa più spazio del valore creato.
                 </HoverCardContent>
               </HoverCard>
             </div>
+            <CardDescription>Seleziona un riquadro per esplorare i livelli; area e colore aiutano a confrontare i settori.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="flex flex-col gap-4 px-0">
             <ToggleGroup
               type="single"
               variant="outline"
@@ -259,53 +321,58 @@ export default function App() {
                 <ToggleGroupItem key={metric.id} value={metric.id}>{metric.label}</ToggleGroupItem>
               ))}
             </ToggleGroup>
-            <div className="flex flex-wrap items-end gap-3">
-              <Field className="w-56">
-                <FieldLabel htmlFor="map-search">Cerca</FieldLabel>
-                <Input id="map-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Codice o nome" />
-              </Field>
-              <Field className="w-40">
-                <FieldLabel>Sezione</FieldLabel>
-                <Select value={sectionOptions.includes(sectionFilter) || sectionFilter === 'all' ? sectionFilter : 'all'} onValueChange={setSectionFilter}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Tutte" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="all">Tutte</SelectItem>
-                      {sectionOptions.map((section) => (
-                        <SelectItem key={section} value={section}>{section}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              {levelOptions.length > 1 && (
-                <Field className="w-44">
-                  <FieldLabel>Livello</FieldLabel>
-                  <Select value={rowLevel === 'auto' ? 'auto' : activeLevel} onValueChange={setRowLevel}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="auto">Livello attuale</SelectItem>
-                        {levelOptions.map((item) => (
-                          <SelectItem key={item} value={item}>{LEVEL_PLURAL[item]}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              )}
-              <Button type="button" size="sm" variant={publishedOnly ? 'secondary' : 'outline'} onClick={() => setPublishedOnly((current) => !current)}>
-                Solo pubblicati
-              </Button>
-              <Field className="w-28">
-                <FieldLabel htmlFor="metric-min">Min {sizeColumn?.unit}</FieldLabel>
-                <Input id="metric-min" inputMode="decimal" value={minText} onChange={(event) => setMinText(event.target.value)} placeholder="min" />
-              </Field>
-              <Field className="w-28">
-                <FieldLabel htmlFor="metric-max">Max {sizeColumn?.unit}</FieldLabel>
-                <Input id="metric-max" inputMode="decimal" value={maxText} onChange={(event) => setMaxText(event.target.value)} placeholder="max" />
-              </Field>
-            </div>
+            <Collapsible className="flex flex-col items-start gap-3">
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="ghost" size="sm">
+                  Filtri{activeFilterCount ? ` · ${activeFilterCount} attivi` : ' aggiuntivi'}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="w-full">
+                <div className="flex flex-wrap items-end gap-3">
+                  <Field className="w-40">
+                    <FieldLabel htmlFor="section-filter">Sezione</FieldLabel>
+                    <Select id="section-filter" value={sectionOptions.includes(sectionFilter) || sectionFilter === 'all' ? sectionFilter : 'all'} onValueChange={setSectionFilter}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Tutte" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="all">Tutte</SelectItem>
+                          {sectionOptions.map((section) => (
+                            <SelectItem key={section} value={section}>{section}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {levelOptions.length > 1 && (
+                    <Field className="w-44">
+                      <FieldLabel htmlFor="level-filter">Livello</FieldLabel>
+                      <Select id="level-filter" value={rowLevel === 'auto' ? 'auto' : activeLevel} onValueChange={setRowLevel}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="auto">Livello attuale</SelectItem>
+                            {levelOptions.map((item) => (
+                              <SelectItem key={item} value={item}>{LEVEL_PLURAL[item]}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                  <Button type="button" size="sm" variant={publishedOnly ? 'secondary' : 'outline'} aria-pressed={publishedOnly} onClick={() => setPublishedOnly((current) => !current)}>
+                    Solo dati pubblicati
+                  </Button>
+                  <Field className="w-28">
+                    <FieldLabel htmlFor="metric-min">Min {sizeColumn?.unit}</FieldLabel>
+                    <Input id="metric-min" type="number" inputMode="decimal" value={minText} onChange={(event) => setMinText(event.target.value)} placeholder="Minimo" />
+                  </Field>
+                  <Field className="w-28">
+                    <FieldLabel htmlFor="metric-max">Max {sizeColumn?.unit}</FieldLabel>
+                    <Input id="metric-max" type="number" inputMode="decimal" value={maxText} onChange={(event) => setMaxText(event.target.value)} placeholder="Massimo" />
+                  </Field>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
             {sizeKey === 'NETTUR_MEUR' && (
               <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area è più grande del valore creato.</p>
             )}
@@ -316,15 +383,16 @@ export default function App() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="gap-3 border-0 bg-transparent py-0 ring-0">
+          <CardHeader className="px-0">
             <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
             <CardDescription>
               {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
               {normalizedQuery ? ` su ${searchPool.length}` : ''}
+              {' · Seleziona una voce per scendere di livello o aprire i dettagli.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="flex flex-col gap-3 px-0">
             {globalHits.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">Altrove nella mappa</span>
@@ -335,6 +403,7 @@ export default function App() {
                 ))}
               </div>
             )}
+            <p className="text-xs text-muted-foreground sm:hidden">Scorri la tabella in orizzontale per vedere tutte le metriche.</p>
             {sorted.length === 0 ? (
               <Empty>
                 <EmptyHeader>
@@ -416,40 +485,63 @@ function KpiCard({ sector, year, previousYear, isTotal, totalCode }) {
         {isTotal && <Badge variant="outline">{totalCode}</Badge>}
         {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-        {KPI_IDS.map((id) => {
-          const column = columnById(id)
-          const cell = displayCell(sector, year, column)
-          const variation = previousYear
-            ? formatVariation(publishedValue(sector, year, id), publishedValue(sector, previousYear, id))
-            : null
-          const numeric = cell.kind === 'value' || cell.kind === 'estimated'
-          return (
-            <Card key={id} size="sm">
-              <CardHeader>
-                <CardDescription>
-                  <TermHint column={column} />
-                </CardDescription>
-                <CardTitle>
-                  {numeric ? (
-                    <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
-                  ) : (
-                    <CellValue cell={cell} />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              {(variation || (numeric && column.unit !== '%') || cell.kind === 'estimated') && (
-                <CardContent className="flex flex-wrap items-center gap-2">
-                  {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
-                  {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
-                  {variation && <Badge variant="outline">vs {previousYear}: {variation}</Badge>}
-                </CardContent>
-              )}
-            </Card>
-          )
-        })}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {PRIMARY_KPI_IDS.map((id) => (
+          <KpiMetric key={id} id={id} sector={sector} year={year} previousYear={previousYear} />
+        ))}
       </div>
+      {SECONDARY_KPI_IDS.length > 0 && (
+        <Collapsible className="flex flex-col items-start gap-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm">Altri indicatori ufficiali ({SECONDARY_KPI_IDS.length})</Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="w-full">
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                Altri valori dei conti economici. Le descrizioni spiegano ogni voce; dove disponibile, il confronto mostra la variazione rispetto all’anno precedente.
+              </p>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {SECONDARY_KPI_IDS.map((id) => (
+                  <KpiMetric key={id} id={id} sector={sector} year={year} previousYear={previousYear} />
+                ))}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </section>
+  )
+}
+
+function KpiMetric({ id, sector, year, previousYear }) {
+  const column = columnById(id)
+  const cell = displayCell(sector, year, column)
+  const variation = previousYear
+    ? formatVariation(publishedValue(sector, year, id), publishedValue(sector, previousYear, id))
+    : null
+  const numeric = cell.kind === 'value' || cell.kind === 'estimated'
+  return (
+    <Card size="sm" className="rounded-none border-0 bg-transparent py-2 ring-0">
+      <CardHeader>
+        <CardDescription>
+          <TermHint column={column} />
+        </CardDescription>
+        <CardTitle>
+          {numeric ? (
+            <span className="tabular-nums">{cell.text}{column.unit === '%' ? '%' : ''}</span>
+          ) : (
+            <CellValue cell={cell} />
+          )}
+        </CardTitle>
+      </CardHeader>
+      {(variation || (numeric && column.unit !== '%') || cell.kind === 'estimated') && (
+        <CardContent className="flex flex-wrap items-center gap-2">
+          {numeric && column.unit !== '%' && <span className="text-muted-foreground">{column.unit}</span>}
+          {cell.kind === 'estimated' && <Badge variant="secondary">stima</Badge>}
+          {variation && <Badge variant="outline">vs {previousYear}: {variation}</Badge>}
+        </CardContent>
+      )}
+    </Card>
   )
 }
 

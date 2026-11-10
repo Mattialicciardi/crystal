@@ -35,7 +35,7 @@ export default function SbsTreemap({ items, year, sizeKey, onOpen }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <svg viewBox="0 0 1000 460" className="h-auto w-full rounded-lg bg-muted" role="img" aria-label={`Mappa dimensionata su ${column.label}`}>
+      <svg viewBox="0 0 1000 460" className="h-auto w-full rounded-lg bg-muted" role="group" aria-label={`Mappa dimensionata su ${column.label}`}>
         {layout.leaves.map((leaf) => {
           const sector = leaf.data
           const width = leaf.x1 - leaf.x0
@@ -46,14 +46,23 @@ export default function SbsTreemap({ items, year, sizeKey, onOpen }) {
             <g
               key={sector.code}
               transform={`translate(${leaf.x0},${leaf.y0})`}
-              className="cursor-pointer"
+              className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              role="button"
+              tabIndex={0}
+              aria-label={`Esplora ${sector.code} ${label}`}
               onClick={() => onOpen(sector.code)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onOpen(sector.code)
+                }
+              }}
             >
               <title>{`${sector.code} · ${label}\n${column.label}: ${shown.text} ${column.unit}`}</title>
               <rect width={width} height={height} fill={SECTION_COLOR[sector.section] || 'var(--muted-foreground)'} rx="2" />
-              {width > 54 && height > 28 && <text x="8" y="18" className="fill-card text-xs font-medium">{sector.code}</text>}
-              {width > 88 && height > 46 && <text x="8" y="36" className="fill-card text-xs">{trunc(label, Math.floor(width / 7.2))}</text>}
-              {width > 78 && height > 64 && <text x="8" y={height - 10} className="fill-card text-xs">{shown.text}</text>}
+              {width > 54 && height > 28 && <text x="8" y="18" className="fill-white text-xs font-medium">{sector.code}</text>}
+              {width > 88 && height > 46 && <text x="8" y="36" className="fill-white text-xs">{trunc(label, Math.floor(width / 7.2))}</text>}
+              {width > 78 && height > 64 && <text x="8" y={height - 10} className="fill-white text-xs">{shown.text}</text>}
             </g>
           )
         })}

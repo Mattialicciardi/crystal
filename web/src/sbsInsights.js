@@ -6,11 +6,11 @@ export const SIZE_ORDER = ['0-9', '10-19', '20-49', '50-249', 'GE250']
 
 export const SIZE_LABEL = {
   '0-9': '0–9 addetti',
-  '10-19': '10–19',
-  '20-49': '20–49',
-  '50-249': '50–249',
-  '250+': '250 e più',
-  GE250: '250 e più',
+  '10-19': '10–19 addetti',
+  '20-49': '20–49 addetti',
+  '50-249': '50–249 addetti',
+  '250+': '250 e più addetti',
+  GE250: '250 e più addetti',
 }
 
 export const EXTRA_ACCOUNTS = [
@@ -30,7 +30,7 @@ export const EXTRA_ACCOUNTS = [
 export const NUTS_ACCOUNTS = [
   { id: 'LOC_NR', label: 'Unità locali', digits: 0 },
   { id: 'EMP_LOC_NR', label: 'Addetti nelle unità locali', digits: 0 },
-  { id: 'WAGE_LOC_MEUR', label: 'Retribuzioni', digits: 2, unit: 'mln €' },
+  { id: 'WAGE_LOC_MEUR', label: 'Retribuzioni (mln €)', digits: 2, unit: 'mln €' },
   { id: 'LC_EMP_LOC_TEUR', label: 'Costo lavoro / addetto', digits: 2, unit: 'mila €' },
 ]
 
@@ -98,18 +98,18 @@ export function accountFacts(sector, context) {
   const wageHead = wagePerEmployee(sector, year)
 
   return [
-    fact('quota-va', 'Quota del VA italiano', formatShare(share(valueAdded, publishedValue(total, year, 'AV_MEUR')))),
+    fact('quota-va', 'Quota del valore aggiunto italiano', formatShare(share(valueAdded, publishedValue(total, year, 'AV_MEUR')))),
     fact('quota-fatt', 'Quota del fatturato italiano', formatShare(share(turnover, publishedValue(total, year, 'NETTUR_MEUR')))),
     fact('quota-imprese', 'Quota delle imprese', formatShare(share(firms, publishedValue(total, year, 'ENT_NR')))),
     fact('quota-addetti', 'Quota degli addetti', formatShare(share(employed, publishedValue(total, year, 'EMP_NR')))),
-    fact('rango-va', 'Posto per valore aggiunto', vaRank ? `${vaRank.rank}° su ${vaRank.of}` : null, 'Tra i fratelli dello stesso padre'),
-    fact('rango-fatt', 'Posto per fatturato', turnoverRank ? `${turnoverRank.rank}° su ${turnoverRank.of}` : null, 'Tra i fratelli dello stesso padre'),
+    fact('rango-va', 'Posto per valore aggiunto', vaRank ? `${vaRank.rank}° su ${vaRank.of}` : null, 'Tra le attività dello stesso livello'),
+    fact('rango-fatt', 'Posto per fatturato', turnoverRank ? `${turnoverRank.rank}° su ${turnoverRank.of}` : null, 'Tra le attività dello stesso livello'),
     fact(
       'produttivita',
-      'VA per addetto',
+      'Valore aggiunto per addetto',
       productivity == null ? null : `${formatNumber(productivity, 1)} mila €`,
       [
-        parentProductivity == null ? null : `padre ${formatNumber(parentProductivity, 1)}`,
+        parentProductivity == null ? null : `livello superiore ${formatNumber(parentProductivity, 1)}`,
         italyProductivity == null ? null : `Italia ${formatNumber(italyProductivity, 1)}`,
       ].filter(Boolean).join(' · ') || null,
     ),
@@ -119,30 +119,30 @@ export function accountFacts(sector, context) {
       wageHead.kind === 'calculated' ? `${formatNumber(wageHead.value, 2)} mila €` : null,
       'Calcolato. Non è il costo del lavoro per addetto.',
     ),
-    fact('acquisti', 'Acquisti su fatturato', formatShare(share(purchases, turnover))),
-    fact('rivendita', 'Rivendita su fatturato', formatShare(share(resale, turnover)), 'Acquisti per rivendita / fatturato'),
-    fact('rivendita-acquisti', 'Rivendita sugli acquisti', formatShare(share(resale, purchases))),
-    fact('lavoro-wage', 'Retribuzioni sul VA', formatShare(share(wages, valueAdded))),
-    fact('lavoro-costo', 'Costo del personale sul VA', formatShare(share(personnel, valueAdded))),
+    fact('acquisti', 'Acquisti sul fatturato', formatShare(share(purchases, turnover))),
+    fact('rivendita', 'Acquisti per rivendita sul fatturato', formatShare(share(resale, turnover))),
+    fact('rivendita-acquisti', 'Acquisti per rivendita sugli acquisti', formatShare(share(resale, purchases))),
+    fact('lavoro-wage', 'Retribuzioni sul valore aggiunto', formatShare(share(wages, valueAdded))),
+    fact('lavoro-costo', 'Costo del personale sul valore aggiunto', formatShare(share(personnel, valueAdded))),
     fact(
       'mol-va',
-      'MOL sul VA',
+      'Margine operativo lordo sul valore aggiunto',
       formatShare(share(gos, valueAdded)),
       parent && publishedValue(parent, year, 'GOS_MEUR') != null
-        ? `padre ${formatShare(share(publishedValue(parent, year, 'GOS_MEUR'), publishedValue(parent, year, 'AV_MEUR')))}`
+        ? `livello superiore ${formatShare(share(publishedValue(parent, year, 'GOS_MEUR'), publishedValue(parent, year, 'AV_MEUR')))}`
         : null,
     ),
     fact(
       'gor',
-      'GOR',
+      'Margine operativo lordo sul fatturato (GOR)',
       gor == null ? null : `${formatNumber(gor, 2)}%`,
-      [parentGor == null ? null : `padre ${formatNumber(parentGor, 2)}%`, italyGor == null ? null : `Italia ${formatNumber(italyGor, 2)}%`].filter(Boolean).join(' · ') || null,
+      [parentGor == null ? null : `livello superiore ${formatNumber(parentGor, 2)}%`, italyGor == null ? null : `Italia ${formatNumber(italyGor, 2)}%`].filter(Boolean).join(' · ') || null,
     ),
     fact('var-2324', 'Fatturato 2023→2024', has('2023') && has('2024') ? formatVariation(publishedValue(sector, '2024', 'NETTUR_MEUR'), publishedValue(sector, '2023', 'NETTUR_MEUR')) : null),
     fact('var-2124', 'Fatturato 2021→2024', has('2021') && has('2024') ? formatVariation(publishedValue(sector, '2024', 'NETTUR_MEUR'), publishedValue(sector, '2021', 'NETTUR_MEUR')) : null),
     fact(
       'ue-prod',
-      'VA per addetto, Italia e UE27',
+      'Valore aggiunto per addetto, Italia e UE27',
       productivity == null || euProductivity == null ? null : `${formatNumber(productivity, 1)} contro ${formatNumber(euProductivity, 1)} mila €`,
     ),
     fact('ue-quota', 'Quota del fatturato UE27', formatShare(share(turnover, euTurnover))),

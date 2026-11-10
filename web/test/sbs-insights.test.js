@@ -39,3 +39,20 @@ test('la manifattura 2023 ha quota di VA e microimprese ufficiali', () => {
   const klass = dataset.sectors.find((sector) => sector.code === 'C1011')
   assert.equal(sizeSnapshot(klass, '2023', 'ENT_NR'), null)
 })
+
+test('le quote per fascia usano solo le classi pubblicate e segnalano la copertura parziale', () => {
+  const sector = {
+    size: {
+      2024: {
+        '0-9': { ENT_NR: { v: 10 } },
+        '10-19': { ENT_NR: { v: 30 } },
+      },
+    },
+  }
+  const snapshot = sizeSnapshot(sector, '2024', 'ENT_NR')
+
+  assert.equal(snapshot.partial, true)
+  assert.equal(snapshot.rows.find((row) => row.code === '0-9').share, 0.25)
+  assert.equal(snapshot.rows.find((row) => row.code === '10-19').share, 0.75)
+  assert.equal(snapshot.rows.find((row) => row.code === '20-49').share, null)
+})

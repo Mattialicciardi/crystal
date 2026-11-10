@@ -37,7 +37,8 @@ export default function SectorTable({ rows, year, sort, onSort, selected, onOpen
   const tableWidth = widths.name + visible.reduce((sum, column) => sum + widths[column.id], 0)
 
   const resize = (key, width) => {
-    setWidths((current) => ({ ...current, [key]: Math.max(key === 'name' ? 180 : 88, Math.round(width)) }))
+    const minWidth = key === 'name' ? 180 : 88
+    setWidths((current) => ({ ...current, [key]: Math.min(720, Math.max(minWidth, Math.round(width))) }))
   }
 
   return (
@@ -72,12 +73,12 @@ export default function SectorTable({ rows, year, sort, onSort, selected, onOpen
           <TableRow className="bg-card hover:bg-card">
             <TableHead className="sticky top-0 left-0 z-30 bg-card whitespace-normal relative" style={{ width: widths.name }} aria-sort={ariaSort(sort, 'name')}>
               <HeaderButton label="Settore" active={sort.key === 'name'} dir={sort.dir} onClick={() => onSort('name')} align="start" />
-              <ResizeHandle label="Settore" onResize={(width) => resize('name', width)} />
+              <ResizeHandle label="Settore" value={widths.name} min={180} onResize={(width) => resize('name', width)} />
             </TableHead>
             {visible.map((column) => (
               <TableHead key={column.id} className="relative sticky top-0 bg-card text-right" style={{ width: widths[column.id] }} aria-sort={ariaSort(sort, column.id)}>
                 <ColumnHeading column={column} sort={sort} onSort={() => onSort(column.id)} />
-                <ResizeHandle label={column.label} onResize={(width) => resize(column.id, width)} />
+                <ResizeHandle label={column.label} value={widths[column.id]} min={88} onResize={(width) => resize(column.id, width)} />
               </TableHead>
             ))}
           </TableRow>
@@ -89,13 +90,19 @@ export default function SectorTable({ rows, year, sort, onSort, selected, onOpen
               <TableRow
                 key={sector.code}
                 data-state={selected === sector.code ? 'selected' : undefined}
-                className="cursor-pointer bg-card"
-                onClick={() => onOpen(sector, kids)}
+                className="bg-card"
               >
                 <TableHead scope="row" className="sticky left-0 z-10 bg-inherit whitespace-normal py-3 align-top">
                   <span className="flex flex-col gap-1">
                     <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
-                    <span className="leading-snug">{titleIt(sector.name)}</span>
+                    <button
+                      type="button"
+                      className="text-left leading-snug hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      onClick={() => onOpen(sector, kids)}
+                      aria-label={`${kids ? 'Esplora' : 'Mostra dettagli di'} ${sector.code} ${titleIt(sector.name)}`}
+                    >
+                      {titleIt(sector.name)}
+                    </button>
                     {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
                   </span>
                 </TableHead>
@@ -161,7 +168,7 @@ function CellValue({ cell }) {
   )
 }
 
-function ResizeHandle({ label, onResize }) {
+function ResizeHandle({ label, value, min, onResize }) {
   const start = (event) => {
     event.preventDefault()
     event.stopPropagation()
@@ -172,9 +179,16 @@ function ResizeHandle({ label, onResize }) {
     const stop = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
+  }
+  const resizeByKeyboard = (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    onResize(value + (event.key === 'ArrowRight' ? 1 : -1) * (event.shiftKey ? 32 : 8))
   }
   return (
     <span
@@ -182,7 +196,13 @@ function ResizeHandle({ label, onResize }) {
       aria-orientation="vertical"
       aria-label={`Ridimensiona ${label}`}
       onPointerDown={start}
-      className="absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize touch-none"
+      onKeyDown={resizeByKeyboard}
+      tabIndex={0}
+      aria-valuemin={min}
+      aria-valuemax={720}
+      aria-valuenow={value}
+      aria-valuetext={`${value}px`}
+      className="absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize touch-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
     />
   )
 }
