@@ -7,6 +7,7 @@ import {
   indexDataset,
   rootReading,
   sortSectors,
+  wagePerEmployee,
 } from '../src/sbsModel.js'
 
 const dataset = JSON.parse(readFileSync(new URL('../public/sbs-it.json', import.meta.url)))
@@ -72,6 +73,51 @@ test('ordinare non tratta il riservato come zero', () => {
   const zeroIndex = sorted.findIndex((sector) => sector.years['2023'].NETTUR_MEUR?.v === 0)
   assert.ok(reservedIndex > sorted.findIndex((sector) => (sector.years['2023'].NETTUR_MEUR?.v || 0) > 0))
   assert.ok(zeroIndex < reservedIndex)
+})
+
+function sectorWith(wage, employed) {
+  return { published: true, years: { '2023': { WAGE_MEUR: wage, EMP_NR: employed } } }
+}
+
+test('retribuzioni per addetto solo se entrambi i valori sono pubblicati', () => {
+  const both = wagePerEmployee(sectorWith({ s: 'v', v: 10 }, { s: 'v', v: 4 }), '2023')
+  assert.equal(both.kind, 'calculated')
+  assert.equal(both.value, 2500)
+  const shown = displayCell(sectorWith({ s: 'v', v: 10 }, { s: 'v', v: 4 }), '2023', columnById('wage_per_employee'))
+  assert.equal(shown.kind, 'calculated')
+  assert.equal(shown.text, '2.500,00')
+})
+
+test('retribuzioni per addetto resta riservato se manca un ingrediente riservato', () => {
+  const result = wagePerEmployee(sectorWith({ s: 'c' }, { s: 'v', v: 4 }), '2023')
+  assert.equal(result.kind, 'reserved')
+  assert.equal(result.value, undefined)
+  const shown = displayCell(sectorWith({ s: 'v', v: 10 }, { s: 'c' }), '2023', columnById('wage_per_employee'))
+  assert.equal(shown.text, 'riservato')
+  assert.notEqual(shown.text, '0')
+})
+
+test('retribuzioni per addetto non diventa zero se gli addetti sono zero', () => {
+  const result = wagePerEmployee(sectorWith({ s: 'v', v: 10 }, { s: 'v', v: 0 }), '2023')
+  assert.equal(result.kind, 'unavailable')
+  assert.equal(result.value, undefined)
+  const shown = displayCell(sectorWith({ s: 'v', v: 10 }, { s: 'v', v: 0 }), '2023', columnById('wage_per_employee'))
+  assert.equal(shown.text, 'n.d.')
+  assert.notEqual(shown.text, '0')
+})
+
+test('retribuzioni per addetto non usa una stima', () => {
+  const result = wagePerEmployee(sectorWith({ s: 'e', v: 10 }, { s: 'v', v: 4 }), '2023')
+  assert.equal(result.kind, 'unavailable')
+  assert.equal(result.value, undefined)
+})
+
+test('il totale 2023 calcola retribuzioni per addetto dai valori ufficiali', () => {
+  const result = wagePerEmployee(dataset.total, '2023')
+  const wage = dataset.total.years['2023'].WAGE_MEUR.v
+  const employed = dataset.total.years['2023'].EMP_NR.v
+  assert.equal(result.kind, 'calculated')
+  assert.equal(result.value, (wage * 1000) / employed)
 })
 
 test('la lettura di commercio e immobiliari usa i numeri del file', () => {

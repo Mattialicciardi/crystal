@@ -17,12 +17,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import InsightPanel from './components/InsightPanel.jsx'
+import SectorTable from './components/SectorTable.jsx'
 import SbsTreemap from './components/SbsTreemap.jsx'
 import {
   COLUMNS,
@@ -33,11 +34,16 @@ import {
   LEVEL_PLURAL,
   SIZE_METRICS,
   ancestorsOf,
+  collectDescendants,
+  collectLevel,
   columnById,
   displayCell,
   indexDataset,
   formatVariation,
+  levelsBelow,
+  matchesView,
   normalize,
+  parseBound,
   publishedValue,
   rootReading,
   sortSectors,
@@ -64,7 +70,17 @@ export default function App() {
   const [sizeKey, setSizeKey] = useState(DEFAULT_SIZE)
   const [sort, setSort] = useState({ key: 'AV_MEUR', dir: 'desc' })
   const [query, setQuery] = useState('')
+  const [sectionFilter, setSectionFilter] = useState('all')
+  const [rowLevel, setRowLevel] = useState('auto')
+  const [publishedOnly, setPublishedOnly] = useState(false)
+  const [minText, setMinText] = useState('')
+  const [maxText, setMaxText] = useState('')
   const [selected, setSelected] = useState(null)
+
+  useEffect(() => {
+    setRowLevel('auto')
+    setSectionFilter('all')
+  }, [path])
 
   useEffect(() => {
     fetch(`${BASE}sbs-it.json`)
@@ -100,16 +116,37 @@ export default function App() {
   const { byCode, children } = indexed
   const focusCode = path.length ? path[path.length - 1] : null
   const focus = focusCode ? byCode.get(focusCode) : data.total
-  const rows = children.get(focusCode || '__root__') || []
+  const levelOptions = levelsBelow(focusCode ? focus.level : null)
+  const activeLevel = rowLevel !== 'auto' && levelOptions.includes(rowLevel) ? rowLevel : levelOptions[0]
+  const levelRows = activeLevel ? collectLevel(children, focusCode, activeLevel) : []
   const normalizedQuery = normalize(query.trim())
-  const filtered = normalizedQuery
-    ? rows.filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
-    : rows
+  const searchPool = normalizedQuery && rowLevel === 'auto'
+    ? collectDescendants(children, focusCode)
+    : levelRows
+  const sectionOptions = [...new Set(levelRows.map((sector) => sector.section))].sort()
+  const activeSectionFilter = sectionOptions.includes(sectionFilter) ? sectionFilter : 'all'
+  const sizeColumn = columnById(sizeKey)
+  const activeFilterCount = [
+    activeSectionFilter !== 'all',
+    rowLevel !== 'auto',
+    publishedOnly,
+    minText.trim() !== '',
+    maxText.trim() !== '',
+  ].filter(Boolean).length
+  const filtered = searchPool.filter((sector) => matchesView(sector, {
+    year,
+    column: sizeColumn,
+    query: normalizedQuery,
+    section: activeSectionFilter,
+    publishedOnly,
+    min: parseBound(minText),
+    max: parseBound(maxText),
+  }))
   const sorted = sortSectors(filtered, year, sort)
-  const level = sorted[0]?.level || rows[0]?.level
+  const level = sorted.length && sorted.every((sector) => sector.level === sorted[0].level) ? sorted[0].level : activeLevel
   const globalHits = normalizedQuery.length < 2 ? [] : data.sectors
     .filter((sector) => normalize(`${sector.code} ${sector.name} ${titleIt(sector.name)}`).includes(normalizedQuery))
-    .filter((sector) => !rows.some((row) => row.code === sector.code))
+    .filter((sector) => !searchPool.some((row) => row.code === sector.code))
     .slice(0, 6)
 
   const openSector = (code) => {
@@ -260,24 +297,89 @@ export default function App() {
             </div>
             <CardDescription>Seleziona un riquadro per esplorare i livelli; area e colore aiutano a confrontare i settori.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 px-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="treemap-size" className="text-sm font-medium">Area proporzionale a</label>
-              <select
-                id="treemap-size"
-                value={sizeKey}
-                onChange={(event) => setSizeKey(event.target.value)}
-                className="h-9 max-w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {SIZE_METRICS.map((metric) => (
-                  <option key={metric.id} value={metric.id}>{metric.label}</option>
-                ))}
-              </select>
-              {sizeKey === 'NETTUR_MEUR' && (
-                <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area supera il valore creato.</p>
-              )}
-            </div>
-            <SbsTreemap items={rows} year={year} sizeKey={sizeKey} onOpen={openSector} />
+          <CardContent className="flex flex-col gap-4 px-0">
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              spacing={2}
+              value={sizeKey}
+              onValueChange={(value) => { if (value) setSizeKey(value) }}
+              aria-label="Metrica dell’area"
+              className="w-full flex-wrap justify-start"
+            >
+              {SIZE_METRICS.map((metric) => metric.rate ? (
+                <HoverCard key={metric.id}>
+                  <HoverCardTrigger asChild>
+                    <ToggleGroupItem value={metric.id}>{metric.label}</ToggleGroupItem>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72">
+                    Rapporto calcolato, non un totale. L’area confronta la retribuzione media per addetto. Non è il costo del lavoro per addetto.
+                  </HoverCardContent>
+                </HoverCard>
+              ) : (
+                <ToggleGroupItem key={metric.id} value={metric.id}>{metric.label}</ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Collapsible className="flex flex-col items-start gap-3">
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="ghost" size="sm">
+                  Filtri{activeFilterCount ? ` · ${activeFilterCount} attivi` : ' aggiuntivi'}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="w-full">
+                <div className="flex flex-wrap items-end gap-3">
+                  <Field className="w-40">
+                    <FieldLabel htmlFor="section-filter">Sezione</FieldLabel>
+                    <Select id="section-filter" value={sectionOptions.includes(sectionFilter) || sectionFilter === 'all' ? sectionFilter : 'all'} onValueChange={setSectionFilter}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Tutte" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="all">Tutte</SelectItem>
+                          {sectionOptions.map((section) => (
+                            <SelectItem key={section} value={section}>{section}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {levelOptions.length > 1 && (
+                    <Field className="w-44">
+                      <FieldLabel htmlFor="level-filter">Livello</FieldLabel>
+                      <Select id="level-filter" value={rowLevel === 'auto' ? 'auto' : activeLevel} onValueChange={setRowLevel}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="auto">Livello attuale</SelectItem>
+                            {levelOptions.map((item) => (
+                              <SelectItem key={item} value={item}>{LEVEL_PLURAL[item]}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                  <Button type="button" size="sm" variant={publishedOnly ? 'secondary' : 'outline'} aria-pressed={publishedOnly} onClick={() => setPublishedOnly((current) => !current)}>
+                    Solo dati pubblicati
+                  </Button>
+                  <Field className="w-28">
+                    <FieldLabel htmlFor="metric-min">Min {sizeColumn?.unit}</FieldLabel>
+                    <Input id="metric-min" type="number" inputMode="decimal" value={minText} onChange={(event) => setMinText(event.target.value)} placeholder="Minimo" />
+                  </Field>
+                  <Field className="w-28">
+                    <FieldLabel htmlFor="metric-max">Max {sizeColumn?.unit}</FieldLabel>
+                    <Input id="metric-max" type="number" inputMode="decimal" value={maxText} onChange={(event) => setMaxText(event.target.value)} placeholder="Massimo" />
+                  </Field>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+            {sizeKey === 'NETTUR_MEUR' && (
+              <p className="text-sm text-muted-foreground">G include la merce rivenduta: l’area è più grande del valore creato.</p>
+            )}
+            {sizeColumn?.rate && (
+              <p className="text-sm text-muted-foreground">Rapporto calcolato: l’area non è un totale del settore.</p>
+            )}
+            <SbsTreemap items={filtered} year={year} sizeKey={sizeKey} onOpen={openSector} />
           </CardContent>
         </Card>
 
@@ -286,68 +388,40 @@ export default function App() {
             <CardTitle>Tabella {level ? LEVEL_PLURAL[level] : ''}</CardTitle>
             <CardDescription>
               {filtered.length} {level ? (filtered.length === 1 ? LEVEL_LABEL[level] : LEVEL_PLURAL[level]) : 'voci'}
-              {normalizedQuery ? ` su ${rows.length}` : ''}
+              {normalizedQuery ? ` su ${searchPool.length}` : ''}
               {' · Seleziona una voce per scendere di livello o aprire i dettagli.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 px-0">
+            {globalHits.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Altrove nella mappa</span>
+                {globalHits.map((sector) => (
+                  <Button key={sector.code} variant="outline" size="sm" onClick={() => openSector(sector.code)}>
+                    {sector.code} · {titleIt(sector.name)}
+                  </Button>
+                ))}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground sm:hidden">Scorri la tabella in orizzontale per vedere tutte le metriche.</p>
             {sorted.length === 0 ? (
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><SearchIcon /></EmptyMedia>
                   <EmptyTitle>Nessuna voce</EmptyTitle>
-                  <EmptyDescription>Nessuna voce di questo livello corrisponde alla ricerca.</EmptyDescription>
+                  <EmptyDescription>Nessun settore corrisponde ai filtri.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
-              <Table className="min-w-[1100px]">
-                <TableHeader className="[&_tr]:border-border/60 [&_tr]:bg-muted/30">
-                  <TableRow>
-                    <TableHead className="sticky left-0 z-10 bg-background whitespace-normal" aria-sort={ariaSort(sort, 'name')}>
-                      <SortButton label="Settore" active={sort.key === 'name'} dir={sort.dir} onClick={() => clickHeader('name')} />
-                    </TableHead>
-                    {COLUMNS.map((column) => (
-                      <TableHead key={column.id} className="max-w-32 whitespace-normal text-right text-xs text-muted-foreground" aria-sort={ariaSort(sort, column.id)}>
-                        <ColumnHeading column={column} sort={sort} onSort={() => clickHeader(column.id)} />
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sorted.map((sector) => {
-                    const kids = (children.get(sector.code) || []).length > 0
-                    const active = selected === sector.code
-                    return (
-                      <TableRow
-                        key={sector.code}
-                        className="border-border/50 hover:bg-muted/40"
-                        data-state={active ? 'selected' : undefined}
-                      >
-                        <TableHead scope="row" className="sticky left-0 max-w-64 bg-background whitespace-normal font-normal">
-                          <span className="flex flex-col items-start gap-1">
-                            <span className="text-xs text-muted-foreground tabular-nums">{sector.code}</span>
-                            <button
-                              type="button"
-                              className="text-left hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                              onClick={() => (kids ? openSector(sector.code) : setSelected(sector.code))}
-                              aria-label={`${kids ? 'Esplora' : 'Mostra dettagli di'} ${sector.code} ${titleIt(sector.name)}`}
-                            >
-                              {titleIt(sector.name)}
-                            </button>
-                            {!sector.published && <Badge variant="secondary">totale non pubblicato</Badge>}
-                          </span>
-                        </TableHead>
-                        {COLUMNS.map((column) => (
-                          <TableCell key={column.id} className="text-right text-xs tabular-nums md:text-sm">
-                            <CellValue cell={displayCell(sector, year, column)} />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+              <SectorTable
+                rows={sorted}
+                year={year}
+                sort={sort}
+                onSort={clickHeader}
+                selected={selected}
+                childrenOf={children}
+                onOpen={(sector, kids) => (kids ? openSector(sector.code) : setSelected(sector.code))}
+              />
             )}
           </CardContent>
           {selectedSector && (
@@ -382,54 +456,11 @@ function LoadingState() {
   )
 }
 
-function ariaSort(sort, key) {
-  if (sort.key !== key) return 'none'
-  return sort.dir === 'asc' ? 'ascending' : 'descending'
-}
-
-function mark(dir) {
-  return dir === 'desc' ? '↓' : '↑'
-}
-
 function definitionFor(column) {
   const direct = GLOSSARY.find((item) => item.code === column.id)
   if (direct) return direct.body
   if (column.derived) return GLOSSARY.find((item) => item.code === 'calcolati')?.body || null
   return null
-}
-
-function SortButton({ label, active, dir, onClick, detail }) {
-  return (
-    <Button variant="ghost" size="sm" onClick={onClick} className="h-auto px-1">
-      <span className="flex flex-col items-start gap-0.5 text-left">
-        <span>{label}{active ? ` ${mark(dir)}` : ''}</span>
-        {detail && <span className="text-xs font-normal text-muted-foreground">{detail}</span>}
-      </span>
-    </Button>
-  )
-}
-
-function ColumnHeading({ column, sort, onSort }) {
-  const definition = definitionFor(column)
-  const detail = `${column.unit}${column.derived ? ' · calcolato' : ''}`
-  const button = (
-    <SortButton
-      label={column.label}
-      detail={detail}
-      active={sort.key === column.id}
-      dir={sort.dir}
-      onClick={onSort}
-    />
-  )
-  if (!definition) return <div className="flex justify-end">{button}</div>
-  return (
-    <div className="flex justify-end">
-      <HoverCard>
-        <HoverCardTrigger asChild>{button}</HoverCardTrigger>
-        <HoverCardContent className="w-80" align="end">{definition}</HoverCardContent>
-      </HoverCard>
-    </div>
-  )
 }
 
 function CellValue({ cell }) {

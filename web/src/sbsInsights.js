@@ -1,6 +1,6 @@
 // Insight calcolati solo da celle ufficiali già pubblicate. Nessuna stima sotto le 4 cifre.
 
-import { formatNumber, formatShare, formatVariation, publishedValue } from './sbsModel.js'
+import { formatNumber, formatShare, formatVariation, publishedValue, wagePerEmployee } from './sbsModel.js'
 
 export const SIZE_ORDER = ['0-9', '10-19', '20-49', '50-249', 'GE250']
 
@@ -95,6 +95,7 @@ export function accountFacts(sector, context) {
   const euValueAdded = cellValue(sector.eu?.[year], 'AV_MEUR')
   const euEmployed = cellValue(sector.eu?.[year], 'EMP_NR')
   const euProductivity = euEmployed && euValueAdded != null ? (euValueAdded * 1000) / euEmployed : null
+  const wageHead = wagePerEmployee(sector, year)
 
   return [
     fact('quota-va', 'Quota del valore aggiunto italiano', formatShare(share(valueAdded, publishedValue(total, year, 'AV_MEUR')))),
@@ -111,6 +112,12 @@ export function accountFacts(sector, context) {
         parentProductivity == null ? null : `livello superiore ${formatNumber(parentProductivity, 1)}`,
         italyProductivity == null ? null : `Italia ${formatNumber(italyProductivity, 1)}`,
       ].filter(Boolean).join(' · ') || null,
+    ),
+    fact(
+      'retribuzioni-addetto',
+      'Retribuzioni / addetto',
+      wageHead.kind === 'calculated' ? `${formatNumber(wageHead.value, 2)} mila €` : null,
+      'Calcolato. Non è il costo del lavoro per addetto.',
     ),
     fact('acquisti', 'Acquisti sul fatturato', formatShare(share(purchases, turnover))),
     fact('rivendita', 'Acquisti per rivendita sul fatturato', formatShare(share(resale, turnover))),
